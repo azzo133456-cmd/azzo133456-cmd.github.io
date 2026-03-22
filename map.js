@@ -138,7 +138,4 @@ function locateUser() {
 // ⭐ 從 API 找最近的路燈
 // ------------------------------------------------------
 async function findNearestLamp(lat, lng) {
-  const res = await fetch(`https://api.azzo133456.page/nearest?lat=${lat}&lng=${lng}`);
-  const data = await res.json();
-  return data;
-}
+  const res = await fetch(`https://api.az
