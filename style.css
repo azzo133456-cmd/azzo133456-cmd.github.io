@@ -13,13 +13,15 @@ html, body {
   gap: 10px;
   align-items: center;
   z-index: 9999;
+  border-bottom: 1px solid #ddd;
 }
 
-/* 地圖容器 */
+/* 地圖容器：高度 = 全螢幕 - 搜尋列 - 廣告 */
 #mapContainer {
-  position: relative;
   width: 100%;
-  height: calc(100vh - 150px); /* 電腦版預設高度 */
+  height: calc(100vh - 60px - 90px); /* 60px = 搜尋列高度, 90px = 廣告 */
+  position: relative;
+  overflow: hidden;
 }
 
 /* 地圖本體 */
@@ -36,7 +38,7 @@ html, body {
   z-index: 9999;
   background: white;
   border: 1px solid #ccc;
-  padding: 10px;
+  padding: 12px;
   border-radius: 50%;
   font-size: 20px;
 }
@@ -46,11 +48,5 @@ html, body {
   width: 100%;
   height: 90px;
   background: #f8f8f8;
-}
-
-/* 📱 手機版（iPhone）用自動高度 */
-@media (max-width: 768px) {
-  #mapContainer {
-    height: auto;
-  }
+  overflow: hidden;
 }
