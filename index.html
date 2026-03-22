@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>路燈查詢地圖</title>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <!-- 自己的 CSS -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- AdSense 啟用碼 -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4403695228861827"
+     crossorigin="anonymous"></script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  
+</head>
+
+<body>
+
+  <!-- 上方搜尋 UI -->
+  <div id="ui">
+    <input id="lampInput" type="text" placeholder="輸入路燈編號">
+    <button onclick="searchLamp()">查詢</button>
+  </div>
+
+  <!-- 地圖容器（中間區域） -->
+  <div id="mapContainer">
+  <div id="map"></div>
+  <button id="locateBtn" onclick="locateUser()">📍</button>
+</div>
+
+  <!-- 底部廣告區（唯一一個） -->
+  <div id="adArea">
+    <ins class="adsbygoogle"
+         style="display:block;width:100%;height:100%;"
+         data-ad-client="ca-pub-4403695228861827"
+         data-ad-slot="8678362216"
+         data-ad-format="auto"
+         data-full-width-responsive="true"></ins>
+
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+  </div>
+
+  <!-- 定位按鈕 -->
+  <button id="locateBtn" onclick="locateUser()">📍</button>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="map.js"></script>
+
+</body>
+</html>
