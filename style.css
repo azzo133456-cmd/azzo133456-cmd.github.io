@@ -11,9 +11,9 @@ html, body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - 90px); /* ⭐ 留出廣告高度 */
   background: white;
-  z-index: 999999; /* 最上層 */
+  z-index: 999999;
   display: flex;
   flex-direction: column;
   justify-content: center;
