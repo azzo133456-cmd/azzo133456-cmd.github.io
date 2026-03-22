@@ -13,10 +13,13 @@ L.control.zoom({
   position: "bottomleft"
 }).addTo(map);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "© OpenStreetMap"
-}).addTo(map);
+L.tileLayer(
+  "https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}",
+  {
+    maxZoom: 20,
+    attribution: "© 國土測繪中心"
+  }
+).addTo(map);
 
 // ⭐ 初次載入後強制修正 Leaflet 尺寸（手機/電腦都需要）
 window.addEventListener("load", () => {
