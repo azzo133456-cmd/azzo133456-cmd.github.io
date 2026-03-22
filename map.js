@@ -26,13 +26,17 @@ window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 200);
 });
 
-function enterMode(mode) {
-  // 隱藏首頁
+// 全域變數
+let mode = "home"; 
+let customMarkers = []; 
+
+// 進入模式（首頁按鈕用）
+function enterMode(newMode) {
   document.getElementById("fullHome").style.display = "none";
+  switchMode(newMode);
+}
 
-let mode = "home"; // 預設主頁
-let customMarkers = []; // 用來存蘆竹/楊梅的 marker
-
+// 切換模式
 function switchMode(newMode) {
   mode = newMode;
 
@@ -67,7 +71,6 @@ function switchMode(newMode) {
     map.setView([24.916, 121.135], 14);
   }
 }
-
 // ------------------------------------------------------
 // ⭐ 用來記錄目前的 marker（只保留最新一個）
 // ------------------------------------------------------
