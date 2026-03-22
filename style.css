@@ -33,15 +33,16 @@ html, body {
 
 /* 懸浮定位按鈕 */
 #locateBtn {
-  position: absolute;
-  bottom: 20px;
+  position: fixed;
+  bottom: 90px; /* 避開底部廣告 */
   right: 20px;
-  z-index: 9999;
+  z-index: 99999;
   background: white;
   border: 1px solid #ccc;
   padding: 12px;
   border-radius: 50%;
   font-size: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
 
 /* 底部廣告固定高度 */
