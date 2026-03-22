@@ -131,8 +131,45 @@ document.getElementById("lampInput").addEventListener("keydown", function (e) {
 });
 
 // ------------------------------------------------------
-// ⭐ 自動定位使用者位置 + 找最近路燈
+// ⭐ 路燈加入下拉式選單及刪除
 // ------------------------------------------------------
+
+function addFav(id, lat, lng) {
+  const favList = document.getElementById("favList");
+
+  // 檢查是否已存在
+  for (let i = 0; i < favList.options.length; i++) {
+    if (favList.options[i].value === id) {
+      alert("已在清單中");
+      return;
+    }
+  }
+
+  // 新增到下拉式選單
+  const opt = document.createElement("option");
+  opt.value = id;
+  opt.textContent = `${id} (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+  favList.appendChild(opt);
+
+  alert("已加入清單");
+}
+
+function deleteFav() {
+  const favList = document.getElementById("favList");
+  const id = favList.value;
+
+  if (!id) {
+    alert("請先選擇要刪除的路燈");
+    return;
+  }
+
+  favList.remove(favList.selectedIndex);
+}
+  
+// ------------------------------------------------------
+// ⭐自動定位使用者位置 + 找最近路燈
+// ------------------------------------------------------  
+  
 function locateUser() {
   if (!navigator.geolocation) {
     alert("此瀏覽器不支援定位功能");
