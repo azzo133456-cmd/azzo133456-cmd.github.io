@@ -1,21 +1,4 @@
 // ------------------------------------------------------
-// ⭐ 電腦版地圖空白的最終修正（Leaflet 必須多次 invalidateSize）
-// ------------------------------------------------------
-function fixMapSize() {
-  if (window.map) {
-    map.invalidateSize();
-  }
-}
-// DOM ready
-document.addEventListener("DOMContentLoaded", fixMapSize);
-
-// window load
-window.addEventListener("load", () => {
-  setTimeout(fixMapSize, 100);
-  setTimeout(fixMapSize, 300);
-  setTimeout(fixMapSize, 800);
-});
-// ------------------------------------------------------
 // ⭐ 初始化地圖
 // ------------------------------------------------------
 const map = L.map("map", {
@@ -30,9 +13,9 @@ L.control.zoom({
   position: "bottomleft"
 }).addTo(map);
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
-  attribution: "© OpenStreetMap contributors"
+  attribution: "© OpenStreetMap"
 }).addTo(map);
 
 // ⭐ 初次載入後強制修正 Leaflet 尺寸（手機/電腦都需要）
@@ -77,6 +60,7 @@ function showLamp(id) {
       setTimeout(() => currentMarker.openPopup(), 300);
     });
 }
+
 // ------------------------------------------------------
 // ⭐ 搜尋功能
 // ------------------------------------------------------
@@ -157,3 +141,4 @@ async function findNearestLamp(lat, lng) {
   const res = await fetch(`https://api.azzo133456.page/nearest?lat=${lat}&lng=${lng}`);
   const data = await res.json();
   return data;
+}
