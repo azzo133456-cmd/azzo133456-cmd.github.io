@@ -45,12 +45,11 @@ html, body {
 
 /* 🗺️ 地圖區域（不滿版） */
 #mapContainer {
-  position: absolute;
-  top: 90px;
+  position: fixed;
+  top: calc(90px + env(safe-area-inset-top));
   left: 0;
   right: 0;
-  bottom: 120px; /* 底部廣告高度 */
-  min-height: 200px; /* 防止被擠到 0 */
+  bottom: calc(120px + env(safe-area-inset-bottom));
 }
 
 #map {
