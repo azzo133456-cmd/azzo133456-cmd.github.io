@@ -54,7 +54,7 @@ let currentMarker = null;
 // ⭐ 顯示某個路燈
 // ------------------------------------------------------
 function showLamp(id) {
-  fetch(`https://lamp-api-bc33.onrender.com/lamp/${id}`)
+  fetch(`https://api.azzo133456.page/lamp/${id}`)
     .then(res => res.json())
     .then(data => {
       if (data.error) {
@@ -163,7 +163,7 @@ function locateUser() {
 // ⭐ 從 API 找最近的路燈
 // ------------------------------------------------------
 async function findNearestLamp(lat, lng) {
-  const res = await fetch(`https://lamp-api-bc33.onrender.com/nearest?lat=${lat}&lng=${lng}`);
+  const res = await fetch(`https://api.azzo133456.page/nearest?lat=${lat}&lng=${lng}`);
   const data = await res.json();
   return data;
 }
