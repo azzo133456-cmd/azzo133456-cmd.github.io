@@ -138,21 +138,21 @@ document.getElementById("lampInput").addEventListener("keydown", function (e) {
 // ------------------------------------------------------
 
 function addFav(id, lat, lng) {
-  const favList = document.getElementById("favList");
-
-  // 檢查是否已存在
-  for (let i = 0; i < favList.options.length; i++) {
-    if (favList.options[i].value === id) {
-      alert("已在清單中");
-      return;
-    }
+  if (mode !== "luzhu" && mode !== "yangmei") {
+    alert("請先選擇蘆竹或楊梅模式");
+    return;
   }
 
-  // 新增到下拉式選單
-  const opt = document.createElement("option");
-  opt.value = id;
-  opt.textContent = `${id} (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-  favList.appendChild(opt);
+  // 檢查是否已存在
+  if (favData[mode].some(item => item.id === id)) {
+    alert("已在清單中");
+    return;
+  }
+
+  favData[mode].push({ id, lat, lng });
+  saveFavToStorage();
+  refreshFavList();
+  refreshFavMarkers();
 
   alert("已加入清單");
 }
@@ -166,9 +166,30 @@ function deleteFav() {
     return;
   }
 
-  favList.remove(favList.selectedIndex);
+  favData[mode] = favData[mode].filter(item => item.id !== id);
+  saveFavToStorage();
+  refreshFavList();
+  refreshFavMarkers();
 }
-  
+
+// ------------------------------------------------------
+// ⭐清單儲存
+// ------------------------------------------------------  
+  let favData = {
+  luzhu: [],
+  yangmei: []
+};
+function loadFavFromStorage() {
+  const saved = localStorage.getItem("favData");
+  if (saved) {
+    favData = JSON.parse(saved);
+  }
+}
+
+function saveFavToStorage() {
+  localStorage.setItem("favData", JSON.stringify(favData));
+}
+
 // ------------------------------------------------------
 // ⭐自動定位使用者位置 + 找最近路燈
 // ------------------------------------------------------  
