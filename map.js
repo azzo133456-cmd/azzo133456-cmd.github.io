@@ -53,10 +53,11 @@ function showLamp(id) {
       currentMarker = L.marker([lat, lng]).addTo(map);
 
       currentMarker.bindPopup(`
-        <b>路燈編號：</b>${data.id}<br>
-        <b>地址：</b>${data.address}<br>
-        <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank">導航</a>
-      `);
+  <b>路燈編號：</b>${data.id}<br>
+  <b>地址：</b>${data.address}<br>
+  <b>經緯度：</b>${lat}, ${lng}<br>
+  <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank">導航</a>
+`);
 
       map.setView([lat, lng], 18);
 
