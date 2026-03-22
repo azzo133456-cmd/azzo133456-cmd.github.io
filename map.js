@@ -1,4 +1,22 @@
 // ------------------------------------------------------
+// ⭐ 電腦版地圖空白的最終修正（Leaflet 必須多次 invalidateSize）
+// ------------------------------------------------------
+function fixMapSize() {
+  if (window.map) {
+    map.invalidateSize();
+  }
+}
+
+// DOM ready
+document.addEventListener("DOMContentLoaded", fixMapSize);
+
+// window load
+window.addEventListener("load", () => {
+  setTimeout(fixMapSize, 100);
+  setTimeout(fixMapSize, 300);
+  setTimeout(fixMapSize, 800);
+});
+// ------------------------------------------------------
 // ⭐ 初始化地圖
 // ------------------------------------------------------
 const map = L.map("map", {
