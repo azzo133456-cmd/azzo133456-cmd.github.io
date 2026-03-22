@@ -1,7 +1,40 @@
-// 初始化地圖
+// ------------------------------------------------------
+// ⭐ 自動偵測 UI 與廣告高度 → 自動調整地圖高度
+// ------------------------------------------------------
+function updateLayout() {
+  const ui = document.getElementById("ui");
+  const ad = document.getElementById("adArea");
+
+  const uiHeight = ui ? ui.offsetHeight : 90;
+  const adHeight = ad ? ad.offsetHeight : 120;
+
+  document.documentElement.style.setProperty("--ui-height", uiHeight + "px");
+  document.documentElement.style.setProperty("--ad-height", adHeight + "px");
+
+  // ⭐ 重新調整地圖大小（Leaflet 必須呼叫）
+  if (window.map) {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+  }
+}
+
+// 初次執行
+updateLayout();
+
+// 視窗大小變化時重新計算
+window.addEventListener("resize", updateLayout);
+
+
+// ------------------------------------------------------
+// ⭐ 初始化地圖
+// ------------------------------------------------------
 const map = L.map("map", {
-  zoomControl: false   // 先關掉預設的右上角縮放按鈕
+  zoomControl: false
 }).setView([25.033, 121.565], 12);
+
+// 讓 map 在 updateLayout 裡能被呼叫
+window.map = map;
 
 // 把縮放控制放到左下角
 L.control.zoom({
@@ -16,7 +49,10 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 // 🔥 用來記錄目前的 marker（只保留最新一個）
 let currentMarker = null;
 
-// 顯示某個路燈
+
+// ------------------------------------------------------
+// ⭐ 顯示某個路燈
+// ------------------------------------------------------
 function showLamp(id) {
   fetch(`https://lamp-api-bc33.onrender.com/lamp/${id}`)
     .then(res => res.json())
@@ -26,15 +62,13 @@ function showLamp(id) {
         return;
       }
 
-      const lat = Number(data.lng); // 緯度
-      const lng = Number(data.lat); // 經度
+      const lat = Number(data.lng);
+      const lng = Number(data.lat);
 
-      // 清除舊 marker
       if (currentMarker) {
         map.removeLayer(currentMarker);
       }
 
-      // 新 marker
       currentMarker = L.marker([lat, lng]).addTo(map);
 
       currentMarker.bindPopup(`
@@ -43,15 +77,16 @@ function showLamp(id) {
         <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank">導航</a>
       `);
 
-      // ⭐⭐⭐ 直接瞬間跳到 marker（不偏移、不動畫）
       map.setView([lat, lng], 18);
 
-      // 開啟 popup
       setTimeout(() => currentMarker.openPopup(), 300);
     });
 }
 
-// 搜尋功能
+
+// ------------------------------------------------------
+// ⭐ 搜尋功能
+// ------------------------------------------------------
 function searchLamp() {
   const input = document.getElementById("lampInput");
   const id = input.value.trim();
@@ -62,20 +97,19 @@ function searchLamp() {
   }
 
   showLamp(id);
-  input.value = ""; // 查詢後清空
+  input.value = "";
 }
 
-// 🔥 Enter 也能查詢
 document.getElementById("lampInput").addEventListener("keydown", function (e) {
   if (e.key === "Enter") {
     searchLamp();
   }
 });
 
-// ------------------------------------------------------
-// 🔥🔥🔥 自動定位使用者位置 + 找最近路燈
-// ------------------------------------------------------
 
+// ------------------------------------------------------
+// ⭐ 自動定位使用者位置 + 找最近路燈
+// ------------------------------------------------------
 function locateUser() {
   if (!navigator.geolocation) {
     alert("此瀏覽器不支援定位功能");
@@ -87,12 +121,10 @@ function locateUser() {
       const userLat = pos.coords.latitude;
       const userLng = pos.coords.longitude;
 
-      // 清除舊 marker
       if (currentMarker) {
         map.removeLayer(currentMarker);
       }
 
-      // 使用者位置 marker（藍色）
       currentMarker = L.marker([userLat, userLng], {
         icon: L.icon({
           iconUrl: "https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png",
@@ -102,18 +134,14 @@ function locateUser() {
 
       currentMarker.bindPopup("你在這裡");
 
-      // ⭐⭐⭐ 直接瞬間跳到定位點（不偏移、不動畫）
       map.setView([userLat, userLng], 18);
 
       setTimeout(() => currentMarker.openPopup(), 300);
 
-      // ----------------------------------------------------
-      // 🔥 找最近路燈（你的後端已經支援）
-      // ----------------------------------------------------
       const nearest = await findNearestLamp(userLat, userLng);
 
       if (nearest) {
-        const dist = nearest.distance * 1000; // km → 公尺
+        const dist = nearest.distance * 1000;
 
         if (dist <= 50) {
           alert(`最近的路燈距離你約 ${Math.round(dist)} 公尺`);
@@ -121,7 +149,6 @@ function locateUser() {
           alert(`最近的路燈超過 50 公尺（約 ${Math.round(dist)} 公尺）`);
         }
 
-        // ⭐ 再瞬間跳到最近路燈
         showLamp(nearest.id);
       }
     },
@@ -131,13 +158,20 @@ function locateUser() {
   );
 }
 
-// 🔥 從 API 找最近的路燈
+
+// ------------------------------------------------------
+// ⭐ 從 API 找最近的路燈
+// ------------------------------------------------------
 async function findNearestLamp(lat, lng) {
   const res = await fetch(`https://lamp-api-bc33.onrender.com/nearest?lat=${lat}&lng=${lng}`);
   const data = await res.json();
-  return data; // { id: "0400001", distance: ... }
+  return data;
 }
 
+
+// ------------------------------------------------------
+// ⭐ 初次載入後再強制調整一次地圖大小
+// ------------------------------------------------------
 setTimeout(() => {
   map.invalidateSize();
 }, 500);
