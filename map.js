@@ -26,6 +26,33 @@ window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 200);
 });
 
+let mode = "home"; // 預設主頁
+let customMarkers = []; // 用來存蘆竹/楊梅的 marker
+
+function switchMode(newMode) {
+  mode = newMode;
+
+  // 清掉舊 marker
+  customMarkers.forEach(m => map.removeLayer(m));
+  customMarkers = [];
+
+  if (mode === "home") {
+    // 回到主頁
+    map.setView([25.033, 121.565], 12);
+    return;
+  }
+
+  if (mode === "luzhu") {
+    loadCustomMarkers(luzhuList);
+    map.setView([25.012, 121.288], 14);
+  }
+
+  if (mode === "yangmei") {
+    loadCustomMarkers(yangmeiList);
+    map.setView([24.916, 121.135], 14);
+  }
+}
+
 // ------------------------------------------------------
 // ⭐ 用來記錄目前的 marker（只保留最新一個）
 // ------------------------------------------------------
