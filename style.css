@@ -7,7 +7,7 @@ html, body {
 
 /* 上方搜尋列 */
 #ui {
-  height: 60px; /* 固定高度，避免跳動 */
+  height: 60px;
   padding: 10px;
   background: white;
   display: flex;
@@ -17,7 +17,7 @@ html, body {
   z-index: 9999;
 }
 
-/* 地圖容器：高度 = 全螢幕 - 搜尋列 - 廣告 */
+/* ⭐ 電腦版 + 手機版都靠這段撐住地圖高度 */
 #mapContainer {
   width: 100%;
   height: calc(100vh - 60px - 90px); /* 60 = 搜尋列, 90 = 廣告 */
@@ -47,7 +47,7 @@ html, body {
 /* 底部廣告固定高度 */
 #adArea {
   width: 100%;
-  height: 90px; /* 固定，不讓 AdSense 亂動 */
+  height: 90px;
   background: #f8f8f8;
   overflow: hidden;
 }
