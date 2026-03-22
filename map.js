@@ -26,6 +26,14 @@ window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 200);
 });
 
+function enterMode(mode) {
+  // 隱藏首頁
+  document.getElementById("fullHome").style.display = "none";
+
+  // 切換模式
+  switchMode(mode);
+}
+
 let mode = "home"; // 預設主頁
 let customMarkers = []; // 用來存蘆竹/楊梅的 marker
 
