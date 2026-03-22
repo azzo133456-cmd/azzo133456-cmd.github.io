@@ -5,6 +5,20 @@ html, body {
   overflow: hidden;
 }
 
+#menu {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+}
+
+#menu button {
+  padding: 8px 16px;
+  font-size: 16px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: white;
+}
+
 /* 上方搜尋列 */
 #ui {
   height: 60px;
