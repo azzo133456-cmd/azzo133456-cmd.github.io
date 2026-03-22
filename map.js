@@ -30,10 +30,6 @@ function enterMode(mode) {
   // 隱藏首頁
   document.getElementById("fullHome").style.display = "none";
 
-  // 切換模式
-  switchMode(mode);
-}
-
 let mode = "home"; // 預設主頁
 let customMarkers = []; // 用來存蘆竹/楊梅的 marker
 
@@ -44,11 +40,22 @@ function switchMode(newMode) {
   customMarkers.forEach(m => map.removeLayer(m));
   customMarkers = [];
 
+  // 取得下拉式選單與刪除按鈕
+  const favList = document.getElementById("favList");
+  const delFavBtn = document.getElementById("delFavBtn");
+
+  // ⭐ 主頁模式：隱藏下拉式選單
   if (mode === "home") {
-    // 回到主頁
+    favList.style.display = "none";
+    delFavBtn.style.display = "none";
+
     map.setView([25.033, 121.565], 12);
     return;
   }
+
+  // ⭐ 蘆竹 / 楊梅模式：顯示下拉式選單
+  favList.style.display = "inline-block";
+  delFavBtn.style.display = "inline-block";
 
   if (mode === "luzhu") {
     loadCustomMarkers(luzhuList);
