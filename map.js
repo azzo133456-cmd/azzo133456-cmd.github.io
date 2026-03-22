@@ -101,7 +101,7 @@ function showLamp(id) {
   <b>路燈編號：</b>${data.id}<br>
   <b>地址：</b>${data.address}<br>
   <b>經緯度：</b>${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
-  <button onclick="addFav('${data.id}', ${lat}, ${lng})">加入清單</button><br>
+  <button onclick="addFav('${data.id}'>加入清單</button><br>
   <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank">導航</a>
 `);
 
