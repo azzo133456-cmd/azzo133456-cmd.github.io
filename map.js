@@ -30,9 +30,9 @@ L.control.zoom({
   position: "bottomleft"
 }).addTo(map);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
-  attribution: "© OpenStreetMap"
+  attribution: "© OpenStreetMap contributors"
 }).addTo(map);
 
 // ⭐ 初次載入後強制修正 Leaflet 尺寸（手機/電腦都需要）
