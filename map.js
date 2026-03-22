@@ -1,49 +1,11 @@
 // ------------------------------------------------------
-// ⭐ 自動偵測 UI 與廣告高度 → 自動調整地圖高度（手機 + 電腦通用）
-// ------------------------------------------------------
-function updateLayout() {
-  const ui = document.getElementById("ui");
-  const ad = document.getElementById("adArea");
-  const mapContainer = document.getElementById("mapContainer");
-
-  const uiH = ui ? ui.offsetHeight : 60;
-  const adH = ad ? ad.offsetHeight : 90;
-
-  // ⭐ 地圖高度 = 全螢幕 - UI - 廣告
-  const vh = window.innerHeight;
-  const mapHeight = vh - uiH - adH;
-
-  mapContainer.style.height = mapHeight + "px";
-
-  // ⭐ Leaflet 必須重新計算尺寸
-  if (window.map) {
-    setTimeout(() => map.invalidateSize(), 150);
-  }
-}
-
-// 初次執行
-updateLayout();
-
-// 視窗大小變化時重新計算
-window.addEventListener("resize", updateLayout);
-
-// AdSense 延遲載入 → 每 500ms 修正一次（最多 5 秒）
-let fixCount = 0;
-const fixInterval = setInterval(() => {
-  updateLayout();
-  fixCount++;
-  if (fixCount > 10) clearInterval(fixInterval);
-}, 500);
-
-
-// ------------------------------------------------------
 // ⭐ 初始化地圖
 // ------------------------------------------------------
 const map = L.map("map", {
   zoomControl: false
 }).setView([25.033, 121.565], 12);
 
-// 讓 updateLayout() 能呼叫 map
+// 讓其他函式能使用 map
 window.map = map;
 
 // 把縮放控制放到左下角
@@ -56,17 +18,15 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
 }).addTo(map);
 
-// ⭐ 初次載入後強制修正 Leaflet 尺寸
+// ⭐ 初次載入後強制修正 Leaflet 尺寸（手機/電腦都需要）
 window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 200);
 });
-
 
 // ------------------------------------------------------
 // ⭐ 用來記錄目前的 marker（只保留最新一個）
 // ------------------------------------------------------
 let currentMarker = null;
-
 
 // ------------------------------------------------------
 // ⭐ 顯示某個路燈
@@ -80,8 +40,8 @@ function showLamp(id) {
         return;
       }
 
-      const lat = Number(data.lng);
-      const lng = Number(data.lat);
+      const lat = Number(data.lng); // 緯度
+      const lng = Number(data.lat); // 經度
 
       if (currentMarker) {
         map.removeLayer(currentMarker);
@@ -100,7 +60,6 @@ function showLamp(id) {
       setTimeout(() => currentMarker.openPopup(), 300);
     });
 }
-
 
 // ------------------------------------------------------
 // ⭐ 搜尋功能
@@ -123,7 +82,6 @@ document.getElementById("lampInput").addEventListener("keydown", function (e) {
     searchLamp();
   }
 });
-
 
 // ------------------------------------------------------
 // ⭐ 自動定位使用者位置 + 找最近路燈
@@ -175,7 +133,6 @@ function locateUser() {
     }
   );
 }
-
 
 // ------------------------------------------------------
 // ⭐ 從 API 找最近的路燈
