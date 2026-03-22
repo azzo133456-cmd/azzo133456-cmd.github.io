@@ -158,6 +158,27 @@ function locateUser() {
   );
 }
 
+function resizeMap() {
+  const uiH = document.getElementById("ui").offsetHeight;
+  const adH = document.getElementById("adArea").offsetHeight;
+
+  const vh = window.innerHeight;
+
+  const mapContainer = document.getElementById("mapContainer");
+  mapContainer.style.height = (vh - uiH - adH) + "px";
+
+  // Leaflet 修正
+  if (window.map) {
+    setTimeout(() => map.invalidateSize(), 50);
+  }
+}
+
+// iPhone Safari 會在 load 後再調整一次高度
+window.addEventListener("load", resizeMap);
+window.addEventListener("resize", resizeMap);
+
+// AdSense 延遲載入 → 再補一次
+setInterval(resizeMap, 500);
 
 // ------------------------------------------------------
 // ⭐ 從 API 找最近的路燈
