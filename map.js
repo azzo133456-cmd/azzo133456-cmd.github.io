@@ -21,6 +21,8 @@ L.tileLayer(
   }
 ).addTo(map);
 
+loadFavFromStorage();
+
 // ⭐ 初次載入後強制修正 Leaflet 尺寸（手機/電腦都需要）
 window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 200);
@@ -62,14 +64,18 @@ function switchMode(newMode) {
   delFavBtn.style.display = "inline-block";
 
   if (mode === "luzhu") {
-    loadCustomMarkers(luzhuList);
-    map.setView([25.012, 121.288], 14);
-  }
+  loadCustomMarkers(luzhuList);
+  map.setView([25.012, 121.288], 14);
+  refreshFavList();
+  refreshFavMarkers();
+}
 
-  if (mode === "yangmei") {
-    loadCustomMarkers(yangmeiList);
-    map.setView([24.916, 121.135], 14);
-  }
+if (mode === "yangmei") {
+  loadCustomMarkers(yangmeiList);
+  map.setView([24.916, 121.135], 14);
+  refreshFavList();
+  refreshFavMarkers();
+}
 }
 // ------------------------------------------------------
 // ⭐ 用來記錄目前的 marker（只保留最新一個）
@@ -172,6 +178,51 @@ function deleteFav() {
   refreshFavMarkers();
 }
 
+document.getElementById("favList").addEventListener("change", function () {
+  const id = this.value;
+  if (!id) return;
+
+  const item = favData[mode].find(x => x.id === id);
+  if (!item) return;
+
+  map.setView([item.lat, item.lng], 18);
+});
+
+let favMarkers = [];
+
+function refreshFavMarkers() {
+  // 清除舊 marker
+  favMarkers.forEach(m => map.removeLayer(m));
+  favMarkers = [];
+
+  favData[mode].forEach(item => {
+    const marker = L.marker([item.lat, item.lng]).addTo(map);
+    marker.bindPopup(`
+      <b>路燈編號：</b>${item.id}<br>
+      <b>經緯度：</b>${item.lat}, ${item.lng}<br>
+      <button onclick="deleteFavById('${item.id}')">刪除</button>
+    `);
+    favMarkers.push(marker);
+  });
+}
+function deleteFavById(id) {
+  favData[mode] = favData[mode].filter(item => item.id !== id);
+  saveFavToStorage();
+  refreshFavList();
+  refreshFavMarkers();
+}
+
+function refreshFavList() {
+  const favList = document.getElementById("favList");
+  favList.innerHTML = `<option value="">我的清單</option>`;
+
+  favData[mode].forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.id;
+    opt.textContent = `${item.id} (${item.lat.toFixed(5)}, ${item.lng.toFixed(5)})`;
+    favList.appendChild(opt);
+  });
+}
 // ------------------------------------------------------
 // ⭐清單儲存
 // ------------------------------------------------------  
