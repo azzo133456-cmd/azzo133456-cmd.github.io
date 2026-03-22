@@ -5,30 +5,53 @@ html, body {
   overflow: hidden;
 }
 
-#homeMenu {
+/* 全螢幕首頁 */
+#fullHome {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  z-index: 999999; /* 最上層 */
   display: flex;
-  justify-content: space-around;
-  padding: 15px;
-  background: #ffffff;
-  border-bottom: 1px solid #ddd;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
 }
 
-.menu-item {
-  flex: 1;
-  margin: 0 6px;
-  padding: 12px 0;
-  text-align: center;
-  background: #f5f5f5;
-  border-radius: 12px;
-  font-size: 18px;
+/* 標題 */
+.home-title {
+  font-size: 28px;
   font-weight: bold;
+  margin-bottom: 40px;
   color: #333;
+}
+
+/* 按鈕區 */
+.home-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 80%;
+  max-width: 300px;
+}
+
+/* App 風格按鈕 */
+.home-btn {
+  background: #f5f5f5;
+  padding: 18px 0;
+  text-align: center;
+  border-radius: 14px;
+  font-size: 20px;
+  font-weight: bold;
   border: 1px solid #ddd;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
   transition: 0.2s;
 }
 
-.menu-item:active {
+.home-btn:active {
   background: #e0e0e0;
   transform: scale(0.97);
 }
