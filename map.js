@@ -1,21 +1,23 @@
 // ------------------------------------------------------
-// ⭐ 自動偵測 UI 與廣告高度 → 自動調整地圖高度
+// ⭐ 自動偵測 UI 與廣告高度 → 自動調整地圖高度（手機 + 電腦通用）
 // ------------------------------------------------------
 function updateLayout() {
   const ui = document.getElementById("ui");
   const ad = document.getElementById("adArea");
+  const mapContainer = document.getElementById("mapContainer");
 
-  const uiHeight = ui ? ui.offsetHeight : 90;
-  const adHeight = ad ? ad.offsetHeight : 120;
+  const uiH = ui ? ui.offsetHeight : 60;
+  const adH = ad ? ad.offsetHeight : 90;
 
-  document.documentElement.style.setProperty("--ui-height", uiHeight + "px");
-  document.documentElement.style.setProperty("--ad-height", adHeight + "px");
+  // ⭐ 地圖高度 = 全螢幕 - UI - 廣告
+  const vh = window.innerHeight;
+  const mapHeight = vh - uiH - adH;
 
-  // ⭐ 重新調整地圖大小（Leaflet 必須呼叫）
+  mapContainer.style.height = mapHeight + "px";
+
+  // ⭐ Leaflet 必須重新計算尺寸
   if (window.map) {
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 200);
+    setTimeout(() => map.invalidateSize(), 150);
   }
 }
 
@@ -25,6 +27,14 @@ updateLayout();
 // 視窗大小變化時重新計算
 window.addEventListener("resize", updateLayout);
 
+// AdSense 延遲載入 → 每 500ms 修正一次（最多 5 秒）
+let fixCount = 0;
+const fixInterval = setInterval(() => {
+  updateLayout();
+  fixCount++;
+  if (fixCount > 10) clearInterval(fixInterval);
+}, 500);
+
 
 // ------------------------------------------------------
 // ⭐ 初始化地圖
@@ -33,7 +43,7 @@ const map = L.map("map", {
   zoomControl: false
 }).setView([25.033, 121.565], 12);
 
-// 讓 map 在 updateLayout 裡能被呼叫
+// 讓 updateLayout() 能呼叫 map
 window.map = map;
 
 // 把縮放控制放到左下角
@@ -46,7 +56,15 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "© OpenStreetMap"
 }).addTo(map);
 
-// 🔥 用來記錄目前的 marker（只保留最新一個）
+// ⭐ 初次載入後強制修正 Leaflet 尺寸
+window.addEventListener("load", () => {
+  setTimeout(() => map.invalidateSize(), 200);
+});
+
+
+// ------------------------------------------------------
+// ⭐ 用來記錄目前的 marker（只保留最新一個）
+// ------------------------------------------------------
 let currentMarker = null;
 
 
@@ -158,31 +176,7 @@ function locateUser() {
   );
 }
 
-function resizeMap() {
-  const isMobile = window.innerWidth < 768;
 
-  if (!isMobile) {
-    // 電腦版不做任何高度計算
-    setTimeout(() => map.invalidateSize(), 50);
-    return;
-  }
-
-  // 手機版高度計算
-  const uiH = document.getElementById("ui").offsetHeight;
-  const adH = document.getElementById("adArea").offsetHeight;
-  const vh = window.innerHeight;
-
-  const mapContainer = document.getElementById("mapContainer");
-  mapContainer.style.height = (vh - uiH - adH) + "px";
-
-  setTimeout(() => map.invalidateSize(), 50);
-}
-
-window.addEventListener("load", resizeMap);
-window.addEventListener("resize", resizeMap);
-
-// AdSense 延遲載入 → 再補一次
-setInterval(resizeMap, 500);
 // ------------------------------------------------------
 // ⭐ 從 API 找最近的路燈
 // ------------------------------------------------------
@@ -191,11 +185,3 @@ async function findNearestLamp(lat, lng) {
   const data = await res.json();
   return data;
 }
-
-
-// ------------------------------------------------------
-// ⭐ 初次載入後再強制調整一次地圖大小
-// ------------------------------------------------------
-setTimeout(() => {
-  map.invalidateSize();
-}, 500);
