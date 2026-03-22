@@ -43,15 +43,17 @@ html, body {
   color: white;
 }
 
-/* 🗺️ 地圖區域（不滿版） */
+/* 🗺️ 地圖容器：自動填滿 UI 與廣告區之間的空間 */
 #mapContainer {
   position: fixed;
-  top: calc(90px + env(safe-area-inset-top));
+  top: calc(var(--ui-height) + env(safe-area-inset-top));
   left: 0;
   right: 0;
-  bottom: calc(120px + env(safe-area-inset-bottom));
+  bottom: calc(var(--ad-height) + env(safe-area-inset-bottom));
+  overflow: hidden;
 }
 
+/* 地圖本體永遠填滿容器 */
 #map {
   width: 100%;
   height: 100%;
