@@ -21,16 +21,44 @@ L.tileLayer(
   }
 ).addTo(map);
 
-loadFavFromStorage();
-
 // ⭐ 初次載入後強制修正 Leaflet 尺寸（手機/電腦都需要）
 window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 200);
 });
 
 // 全域變數
-let mode = "home"; 
-let customMarkers = []; 
+let mode = "home";
+let customMarkers = [];
+let currentMarker = null;
+
+let favData = {
+  luzhu: [],
+  yangmei: []
+};
+
+let favMarkers = [];
+
+function loadFavFromStorage() {
+  const saved = localStorage.getItem("favData");
+  if (saved) favData = JSON.parse(saved);
+}
+
+function saveFavToStorage() {
+  localStorage.setItem("favData", JSON.stringify(favData));
+}
+
+const map = L.map("map", { zoomControl: false }).setView([25.033, 121.565], 12);
+window.map = map;
+
+L.control.zoom({ position: "bottomleft" }).addTo(map);
+
+L.tileLayer(
+  "https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}/{y}/{x}",
+  { maxZoom: 20, attribution: "© 國土測繪中心" }
+).addTo(map);
+
+loadFavFromStorage();
+
 
 // 進入模式（首頁按鈕用）
 function enterMode(newMode) {
@@ -107,9 +135,9 @@ function showLamp(id) {
   <b>路燈編號：</b>${data.id}<br>
   <b>地址：</b>${data.address}<br>
   <b>經緯度：</b>${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
-  <button onclick="addFav('${data.id}'>加入清單</button><br>
+  <button onclick="addFav('${data.id}', ${lat}, ${lng})">加入清單</button><br>
   <a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank">導航</a>
-`);
+      `);
 
       map.setView([lat, lng], 18);
 
