@@ -4,12 +4,8 @@
 const API = "https://api.azzo133456.page";
 
 // Hash → mode 對照表
-const ROUTES = {
-  "":    "home",
-  "LZ":  "luzhu",
-  "YM":  "yangmei"
-};
-const HASHES = { home: "", luzhu: "LZ", yangmei: "YM" };
+const ROUTES = { "":  "fullhome",   "AL": "home",  "LZ": "luzhu", "YM": "yangmei" };
+const HASHES = { fullhome: "", home: "AL", luzhu: "LZ", yangmei: "YM" };
 
 let mode = "home";
 let currentMarker = null;
