@@ -99,7 +99,7 @@ function switchMode(newMode) {
 // ⭐ 顯示某個路燈（搜尋用）
 // ------------------------------------------------------
 function showLamp(id) {
-  fetch(`https://api.azzo133456.page/lamp/${id}`)
+  fetch(`https://api.azzo133456.page/lamp?id=${id}`)
     .then(res => res.json())
     .then(data => {
       if (data.error) {
