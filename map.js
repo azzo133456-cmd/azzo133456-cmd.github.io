@@ -64,30 +64,31 @@ function enterMode(newMode) {
 function switchMode(newMode) {
   mode = newMode;
 
-  // ⭐ 首頁只在第一次顯示
-  if (mode !== "home") {
-    document.getElementById("fullHome").style.display = "none";
+  // ⭐ 首頁（fullhome）才顯示全螢幕首頁
+  if (mode === "fullhome") {
+    document.getElementById("fullHome").style.display = "flex";
+    return;
   }
 
-  customMarkers.forEach(m => map.removeLayer(m));
-  customMarkers = [];
+  // ⭐ 其他模式都隱藏首頁
+  document.getElementById("fullHome").style.display = "none";
 
-  const favList = document.getElementById("favList");
-  const delFavBtn = document.getElementById("delFavBtn");
+  // ⭐ 主頁（home）不顯示清單
   const isRegion = mode === "luzhu" || mode === "yangmei";
-
   favList.style.display = isRegion ? "inline-block" : "none";
   delFavBtn.style.display = isRegion ? "inline-block" : "none";
 
-  if (!isRegion) {
+  // ⭐ 主頁（home）只顯示地圖
+  if (mode === "home") {
     map.setView([25.033, 121.565], 12);
     return;
   }
 
+  // ⭐ 蘆竹 / 楊梅
   if (mode === "luzhu") {
     loadCustomMarkers(luzhuList);
     map.setView([25.012, 121.288], 14);
-  } else {
+  } else if (mode === "yangmei") {
     loadCustomMarkers(yangmeiList);
     map.setView([24.916, 121.135], 14);
   }
