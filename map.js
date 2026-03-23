@@ -107,8 +107,8 @@ function showLamp(id) {
         return;
       }
 
-      const lat = Number(data.lng);
-      const lng = Number(data.lat);
+      const lat = Number(data.lat);
+      const lng = Number(data.lng);
 
       if (currentMarker) map.removeLayer(currentMarker);
 
