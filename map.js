@@ -22,10 +22,15 @@ L.tileLayer("https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}
   attribution: "© 國土測繪中心"
 }).addTo(map);
 
-window.addEventListener("load", () => setTimeout(() => map.invalidateSize(), 200));
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    map.invalidateSize();
+    restoreMode(); // ✅ 重整後還原上次模式
+  }, 200);
+});
 
 // ─────────────────────────────────────────
-// 儲存 & 同步（合併原本的 save + refreshList + refreshMarkers）
+// 儲存 & 同步清單 + Markers
 // ─────────────────────────────────────────
 function syncFav() {
   localStorage.setItem("favData", JSON.stringify(favData));
@@ -69,6 +74,15 @@ function popupHTML({ id, address, lat, lng }, isFav = false) {
 // ─────────────────────────────────────────
 // 模式切換
 // ─────────────────────────────────────────
+function saveMode() {
+  localStorage.setItem("lastMode", mode);
+}
+
+function restoreMode() {
+  const last = localStorage.getItem("lastMode");
+  if (last && last !== "home") enterMode(last);
+}
+
 function enterMode(newMode) {
   document.getElementById("fullHome").style.display = "none";
   switchMode(newMode);
@@ -76,6 +90,7 @@ function enterMode(newMode) {
 
 function switchMode(newMode) {
   mode = newMode;
+  saveMode(); // ✅ 每次切換時儲存模式
 
   customMarkers.forEach(m => map.removeLayer(m));
   customMarkers = [];
@@ -100,7 +115,7 @@ function switchMode(newMode) {
     map.setView([24.916, 121.135], 14);
   }
 
-  syncFav();
+  syncFav(); // ✅ 切換模式後同步清單與 markers
 }
 
 // ─────────────────────────────────────────
@@ -138,7 +153,7 @@ async function showLamp(id) {
 }
 
 // ─────────────────────────────────────────
-// 清單管理（合併刪除邏輯）
+// 清單管理
 // ─────────────────────────────────────────
 function addFav(id, lat, lng) {
   if (!["luzhu", "yangmei"].includes(mode)) return alert("請先選擇蘆竹或楊梅模式");
@@ -149,12 +164,11 @@ function addFav(id, lat, lng) {
 }
 
 function removeFav(id) {
-  // 同時處理「下拉刪除」和「popup 刪除」
   favData[mode] = favData[mode].filter(item => item.id !== id);
   syncFav();
 }
 
-// 下拉刪除按鈕
+// 下拉選單刪除按鈕
 function deleteFav() {
   const id = document.getElementById("favList").value;
   if (!id) return alert("請先選擇要刪除的路燈");
