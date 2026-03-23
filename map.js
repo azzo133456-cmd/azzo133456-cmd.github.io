@@ -107,7 +107,7 @@ function syncFav() {
   (favData[mode] || []).forEach(({ id, lat, lng }) => {
     const opt = document.createElement("option");
     opt.value = id;
-    opt.textContent = `${id} (${Number(lat).toFixed(5)}, ${Number(lng).toFixed(5)})`;
+    opt.textContent = id;   // ⭐ 只顯示 id
     favList.appendChild(opt);
   });
 
@@ -180,7 +180,7 @@ function addFav(id, lat, lng) {
   if (favData[mode].some(item => item.id === id))
     return alert("已在清單中");
 
-  favData[mode].push({ id, lat, lng });
+  favData[mode].push({ id, lat, lng });  // ⭐ 必須存完整資料
   syncFav();
   alert("已加入清單");
 }
