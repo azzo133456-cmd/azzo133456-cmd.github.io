@@ -143,7 +143,7 @@ async function showLamp(id) {
 function addFav(id, lat, lng) {
   if (!["luzhu", "yangmei"].includes(mode)) return alert("請先選擇蘆竹或楊梅模式");
   if (favData[mode].some(item => item.id === id)) return alert("已在清單中");
-  favData[mode].push({ id, lat, lng });
+  favData[mode].push({ id });
   syncFav();
   alert("已加入清單");
 }
