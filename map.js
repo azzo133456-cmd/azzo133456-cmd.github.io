@@ -68,8 +68,10 @@ function enterMode(newMode) {
 function switchMode(newMode) {
   mode = newMode;
 
-  document.getElementById("fullHome").style.display =
-    mode === "home" ? "flex" : "none";
+  // ⭐ 首頁只在第一次顯示
+  if (mode !== "home") {
+    document.getElementById("fullHome").style.display = "none";
+  }
 
   customMarkers.forEach(m => map.removeLayer(m));
   customMarkers = [];
