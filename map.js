@@ -42,6 +42,9 @@ function handleRoute() {
   const hash = location.hash.replace("#", "");
   const newMode = ROUTES[hash] ?? "home";
   switchMode(newMode);
+
+  // ⭐ 初始化清單（無論在哪個模式）
+  syncFav();
 }
 
 function navigate(newMode) {
@@ -57,34 +60,37 @@ function navigate(newMode) {
 // ─────────────────────────────────────────
 // 模式切換
 // ─────────────────────────────────────────
-function enterMode(newMode) {
-  navigate(newMode);
-}
-
 function switchMode(newMode) {
   mode = newMode;
 
-  // ⭐ 首頁（fullhome）才顯示全螢幕首頁
+  const fullHome = document.getElementById("fullHome");
+  const favList = document.getElementById("favList");
+  const delFavBtn = document.getElementById("delFavBtn");
+
+  // ⭐ fullhome：只顯示首頁，不動清單、不動地圖
   if (mode === "fullhome") {
-    document.getElementById("fullHome").style.display = "flex";
+    fullHome.style.display = "flex";
     return;
   }
 
-  // ⭐ 其他模式都隱藏首頁
-  document.getElementById("fullHome").style.display = "none";
+  // ⭐ 其他模式隱藏首頁
+  fullHome.style.display = "none";
 
-  // ⭐ 主頁（home）不顯示清單
   const isRegion = mode === "luzhu" || mode === "yangmei";
+
   favList.style.display = isRegion ? "inline-block" : "none";
   delFavBtn.style.display = isRegion ? "inline-block" : "none";
 
-  // ⭐ 主頁（home）只顯示地圖
+  // ⭐ 主頁（home）不顯示清單，不清除資料
   if (mode === "home") {
     map.setView([25.033, 121.565], 12);
     return;
   }
 
-  // ⭐ 蘆竹 / 楊梅
+  // ⭐ 只有在 luzhu / yangmei 才清除舊 marker
+  customMarkers.forEach(m => map.removeLayer(m));
+  customMarkers = [];
+
   if (mode === "luzhu") {
     loadCustomMarkers(luzhuList);
     map.setView([25.012, 121.288], 14);
@@ -93,6 +99,7 @@ function switchMode(newMode) {
     map.setView([24.916, 121.135], 14);
   }
 
+  // ⭐ 最後一定要同步清單
   syncFav();
 }
 
