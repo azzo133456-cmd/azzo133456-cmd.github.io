@@ -78,10 +78,11 @@ function switchMode(newMode) {
 
   const isRegion = mode === "luzhu" || mode === "yangmei";
 
+  // ⭐ 只有 luzhu / yangmei 才顯示清單
   favList.style.display = isRegion ? "inline-block" : "none";
   delFavBtn.style.display = isRegion ? "inline-block" : "none";
 
-  // ⭐ 主頁（home）不顯示清單，不清除資料
+  // ⭐ 主頁（home）不顯示清單、不清除資料
   if (mode === "home") {
     map.setView([25.033, 121.565], 12);
     return;
@@ -94,12 +95,12 @@ function switchMode(newMode) {
   if (mode === "luzhu") {
     loadCustomMarkers(luzhuList);
     map.setView([25.012, 121.288], 14);
-  } else if (mode === "yangmei") {
+   } else if (mode === "yangmei") {
     loadCustomMarkers(yangmeiList);
     map.setView([24.916, 121.135], 14);
   }
 
-  // ⭐ 最後一定要同步清單
+  // ⭐ 最後一定要同步清單（初始化 + 顯示）
   syncFav();
 }
 
