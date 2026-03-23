@@ -3,6 +3,14 @@
 // ─────────────────────────────────────────
 const API = "https://api.azzo133456.page";
 
+// Hash → mode 對照表
+const ROUTES = {
+  "":    "home",
+  "LZ":  "luzhu",
+  "YM":  "yangmei"
+};
+const HASHES = { home: "", luzhu: "LZ", yangmei: "YM" };
+
 let mode = "home";
 let currentMarker = null;
 let customMarkers = [];
@@ -25,43 +33,44 @@ L.tileLayer("https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}
 window.addEventListener("load", () => {
   setTimeout(() => {
     map.invalidateSize();
-    handleRoute(); // ✅ 頁面載入時依 URL hash 決定畫面
+    handleRoute();
   }, 200);
 });
 
 // ─────────────────────────────────────────
 // Hash Router
 // ─────────────────────────────────────────
-
-// 監聽上一頁 / 下一頁 / 手動改 URL
 window.addEventListener("hashchange", handleRoute);
 
 function handleRoute() {
-  const hash = location.hash.replace("#", "") || "home";
-  const valid = ["home", "luzhu", "yangmei"];
-  switchMode(valid.includes(hash) ? hash : "home");
+  const hash = location.hash.replace("#", "");
+  const newMode = ROUTES[hash] ?? "home";
+  switchMode(newMode);
 }
 
-// 切換模式時同步更新 URL（不會觸發 hashchange，不會 loop）
 function navigate(newMode) {
-  if (location.hash !== `#${newMode}`) {
-    location.hash = newMode; // 觸發 hashchange → handleRoute → switchMode
+  const hash = HASHES[newMode] ?? "";
+  const current = location.hash.replace("#", "");
+  if (current !== hash) {
+    location.hash = hash; // 觸發 hashchange → handleRoute
   } else {
-    switchMode(newMode);     // hash 沒變時直接呼叫（例如重整）
+    switchMode(newMode);  // hash 沒變（例如重整）直接切
   }
 }
 
 // ─────────────────────────────────────────
-// 模式切換（純 UI，不再操作 localStorage 模式）
+// 模式切換
 // ─────────────────────────────────────────
+function enterMode(newMode) {
+  navigate(newMode);
+}
+
 function switchMode(newMode) {
   mode = newMode;
 
-  // 首頁顯示 / 隱藏
   document.getElementById("fullHome").style.display =
     mode === "home" ? "flex" : "none";
 
-  // 清掉舊 customMarkers
   customMarkers.forEach(m => map.removeLayer(m));
   customMarkers = [];
 
@@ -86,11 +95,6 @@ function switchMode(newMode) {
   }
 
   syncFav();
-}
-
-// enterMode 改成呼叫 navigate（讓 URL 也一起更新）
-function enterMode(newMode) {
-  navigate(newMode);
 }
 
 // ─────────────────────────────────────────
