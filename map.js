@@ -3,23 +3,26 @@
 // ─────────────────────────────────────────
 const API = "https://api.azzo133456.page";
 
-// Hash → mode 對照表
-const ROUTES = { "":  "fullhome",   "AL": "home",  "LZ": "luzhu", "YM": "yangmei" };
-const HASHES = { fullhome: "", home: "AL", luzhu: "LZ", yangmei: "YM" };
+// Hash ↔ mode 對照表
+const ROUTES = { "": "fullhome", "LZ": "luzhu", "YM": "yangmei" };
+const HASHES = { fullhome: "", luzhu: "LZ", yangmei: "YM" };
 
-let mode = "home";
+let mode = "fullhome";
 let currentMarker = null;
 let customMarkers = [];
 let favMarkers = [];
 
+// ─────────────────────────────────────────
+// favData 載入 / 儲存
+// ─────────────────────────────────────────
 function loadFavData() {
   try {
     const raw = JSON.parse(localStorage.getItem("favData") || "{}");
     return {
-      luzhu: Array.isArray(raw.luzhu) ? raw.luzhu : [],
+      luzhu:   Array.isArray(raw.luzhu)   ? raw.luzhu   : [],
       yangmei: Array.isArray(raw.yangmei) ? raw.yangmei : []
     };
-  } catch (e) {
+  } catch {
     return { luzhu: [], yangmei: [] };
   }
 }
@@ -42,20 +45,15 @@ L.tileLayer("https://wmts.nlsc.gov.tw/wmts/EMAP/default/GoogleMapsCompatible/{z}
   attribution: "© 國土測繪中心"
 }).addTo(map);
 
-function restoreAppState() {
-  favData = loadFavData();
-  map.invalidateSize();
-  handleRoute();
-}
-
 window.addEventListener("load", () => {
   setTimeout(() => {
-    restoreAppState();
+    map.invalidateSize();
+    handleRoute();
   }, 200);
 });
 
-// 上一頁再回來 / BFCache 還原時也重新同步
-window.addEventListener("pageshow", () => {
+// BFCache（上一頁回來）時重新同步
+window.addEventListener("pageshow", (e) => {
   favData = loadFavData();
   handleRoute();
 });
@@ -66,21 +64,19 @@ window.addEventListener("hashchange", handleRoute);
 // Hash Router
 // ─────────────────────────────────────────
 function handleRoute() {
-  const hash = location.hash.replace(/^#\/?/, ""); // 兼容 #LZ / #/LZ
+  const hash = location.hash.replace(/^#\/?/, "");
   const newMode = ROUTES[hash] ?? "fullhome";
   switchMode(newMode);
-  renderFav();
 }
 
-function navigate(newMode) {
+// 從 HTML onclick / 程式碼內部呼叫，統一走這裡
+function enterMode(newMode) {
   const hash = HASHES[newMode] ?? "";
   const current = location.hash.replace(/^#\/?/, "");
-
   if (current !== hash) {
-    location.hash = hash ? `#${hash}` : "";
+    location.hash = hash; // 觸發 hashchange → handleRoute → switchMode
   } else {
-    switchMode(newMode);
-    renderFav();
+    switchMode(newMode);  // hash 沒變（重整同頁）直接切
   }
 }
 
@@ -90,66 +86,56 @@ function navigate(newMode) {
 function switchMode(newMode) {
   mode = newMode;
 
-  const fullHome = document.getElementById("fullHome");
-  const favList = document.getElementById("favList");
-  const delFavBtn = document.getElementById("delFavBtn");
-
   const isRegion = mode === "luzhu" || mode === "yangmei";
 
-  // 先統一控制顯示
-  fullHome.style.display = mode === "fullhome" ? "flex" : "none";
-  favList.style.display = isRegion ? "inline-block" : "none";
-  delFavBtn.style.display = isRegion ? "inline-block" : "none";
+  document.getElementById("fullHome").style.display  = mode === "fullhome" ? "flex"         : "none";
+  document.getElementById("favList").style.display   = isRegion            ? "inline-block" : "none";
+  document.getElementById("delFavBtn").style.display = isRegion            ? "inline-block" : "none";
 
-  // 每次切模式都先清除區域 marker
+  // 清掉區域路燈 markers
   customMarkers.forEach(m => map.removeLayer(m));
   customMarkers = [];
 
-  if (mode === "fullhome") {
-    return;
-  }
+  // 清掉舊的收藏 markers（每次都重畫，避免跨區殘留）
+  favMarkers.forEach(m => map.removeLayer(m));
+  favMarkers = [];
 
-  if (mode === "home") {
-    map.setView([25.033, 121.565], 12);
-    return;
-  }
+  if (mode === "fullhome") return;
 
   if (mode === "luzhu") {
     loadCustomMarkers(luzhuList);
     map.setView([25.012, 121.288], 14);
+  } else if (mode === "yangmei") {
+    loadCustomMarkers(yangmeiList);
+    map.setView([24.916, 121.135], 14);
+  } else {
+    map.setView([25.033, 121.565], 12);
     return;
   }
 
-  if (mode === "yangmei") {
-    loadCustomMarkers(yangmeiList);
-    map.setView([24.916, 121.135], 14);
-    return;
-  }
+  renderFav(); // 只有區域模式才渲染收藏清單
 }
 
 // ─────────────────────────────────────────
-// 儲存 & 同步清單 + Markers
+// 渲染收藏清單 + Markers
 // ─────────────────────────────────────────
 function renderFav() {
   const favList = document.getElementById("favList");
-
   favList.innerHTML = `<option value="">我的清單</option>`;
 
-  // 先清除舊的收藏 marker
-  favMarkers.forEach(m => map.removeLayer(m));
-  favMarkers = [];
+  // 重新從 localStorage 確保資料最新
+  favData = loadFavData();
 
-  // 只有區域模式才顯示清單與 marker
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+  const list = favData[mode] || [];
 
-  (favData[mode] || []).forEach(({ id, lat, lng }) => {
+  list.forEach(({ id, lat, lng }) => {
     const opt = document.createElement("option");
     opt.value = id;
     opt.textContent = id;
     favList.appendChild(opt);
   });
 
-  favMarkers = (favData[mode] || []).map(({ id, lat, lng }) => {
+  favMarkers = list.map(({ id, lat, lng }) => {
     const m = L.marker([lat, lng]).addTo(map);
     m.bindPopup(popupHTML({ id, lat, lng }, true));
     return m;
@@ -211,14 +197,8 @@ async function showLamp(id) {
 // 清單管理
 // ─────────────────────────────────────────
 function addFav(id, lat, lng) {
-  if (!["luzhu", "yangmei"].includes(mode)) {
-    return alert("請先選擇蘆竹或楊梅模式");
-  }
-
-  if (favData[mode].some(item => item.id === id)) {
-    return alert("已在清單中");
-  }
-
+  if (!["luzhu", "yangmei"].includes(mode)) return alert("請先選擇蘆竹或楊梅模式");
+  if (favData[mode].some(item => item.id === id)) return alert("已在清單中");
   favData[mode].push({ id, lat, lng });
   saveFavData();
   renderFav();
@@ -227,7 +207,6 @@ function addFav(id, lat, lng) {
 
 function removeFav(id) {
   if (!["luzhu", "yangmei"].includes(mode)) return;
-
   favData[mode] = favData[mode].filter(item => item.id !== id);
   saveFavData();
   renderFav();
