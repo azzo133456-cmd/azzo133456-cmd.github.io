@@ -145,7 +145,7 @@ function renderFav() {
 // ─────────────────────────────────────────
 // Popup HTML 模板
 // ─────────────────────────────────────────
-function popupHTML({ id, address, lat, lng }, isFav = false) {
+function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
   const nav = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
   const btn = isFav
     ? `<button onclick="removeFav('${id}')">刪除</button>`
@@ -154,6 +154,10 @@ function popupHTML({ id, address, lat, lng }, isFav = false) {
     <b>路燈編號：</b>${id}<br>
     ${address ? `<b>地址：</b>${address}<br>` : ""}
     <b>經緯度：</b>${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}<br>
+    <span style="display:inline-flex;gap:16px;">
+      <span><b>瓦數：</b>${watt != null ? watt + " W" : "—"}</span>
+      <span><b>色溫：</b>${col  != null ? col  + " K" : "—"}</span>
+    </span><br>
     ${btn}<br>
     <a href="${nav}" target="_blank">導航</a>
   `;
