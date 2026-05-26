@@ -230,6 +230,61 @@ document.getElementById("favList").addEventListener("change", function () {
 // ─────────────────────────────────────────
 // 定位 + 最近路燈
 // ─────────────────────────────────────────
+// ─────────────────────────────────────────
+// 管理員 / 匯入
+// ─────────────────────────────────────────
+function openImport() {
+  const modal = document.getElementById("importModal");
+  modal.style.display = "flex";
+}
+
+async function doImport() {
+  const fileInput  = document.getElementById("importFile");
+  const areasInput = document.getElementById("importAreas");
+  const status     = document.getElementById("importStatus");
+  const btn        = document.getElementById("importBtn");
+
+  if (!fileInput.files.length) { status.textContent = "請選擇檔案"; return; }
+
+  status.textContent = "解析中…";
+  btn.disabled = true;
+
+  try {
+    const buf  = await fileInput.files[0].arrayBuffer();
+    const wb   = XLSX.read(buf, { type: "array", raw: true });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: false });
+
+    if (!rows.length) throw new Error("檔案內無資料");
+
+    // 解析行政區篩選（逗號或頓號分隔）
+    const areasRaw = areasInput.value.trim();
+    const areas = areasRaw
+      ? areasRaw.split(/[,，、]/).map(a => a.trim()).filter(Boolean)
+      : [];
+
+    status.textContent = `解析完成 ${rows.length} 筆，上傳中…`;
+
+    const res  = await fetch(`${API}/import`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ data: rows, areas })
+    });
+    const result = await res.json();
+
+    if (result.ok) {
+      status.textContent = `✅ 匯入成功：${result.count} 筆`;
+      fileInput.value = "";
+    } else {
+      status.textContent = `❌ ${result.error}`;
+    }
+  } catch (e) {
+    status.textContent = `❌ 錯誤：${e.message}`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function locateUser() {
   if (!navigator.geolocation) return alert("此瀏覽器不支援定位功能");
 

@@ -71,8 +71,28 @@
   </div>
 
 
+  <!-- 匯入 Modal -->
+  <div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:10px;padding:24px;width:320px;max-width:90vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 16px">匯入路燈資料</h3>
+      <p style="font-size:13px;color:#555;margin:0 0 12px">支援格式：路燈/開關箱 Excel（中文欄名）<br>TWD97 X/Y 座標自動轉換經緯度</p>
+      <input id="importFile" type="file" accept=".xlsx,.csv" style="width:100%;margin-bottom:12px">
+      <input id="importAreas" type="text" placeholder="篩選行政區（選填）例：汐止區,五股區,三重區" style="width:100%;padding:6px;box-sizing:border-box;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;font-size:13px">
+      <div style="display:flex;gap:8px">
+        <button id="importBtn" onclick="doImport()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">匯入</button>
+        <button onclick="document.getElementById('importModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+      </div>
+      <p id="importStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
+    </div>
+  </div>
+
+  <!-- 管理員入口（長按地圖標題 3 秒開啟） -->
+  <div id="adminBtn" onclick="openImport()" style="position:fixed;bottom:60px;right:12px;width:36px;height:36px;background:rgba(47,79,127,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;z-index:1000" title="管理員">⚙️</div>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- SheetJS（Excel 解析） -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="map.js"></script>
 
 </body>
