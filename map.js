@@ -253,9 +253,27 @@ async function doImport() {
     const buf  = await fileInput.files[0].arrayBuffer();
     const wb   = XLSX.read(buf, { type: "array", raw: true });
     const ws   = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: false });
+    const allRows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: false });
 
-    if (!rows.length) throw new Error("檔案內無資料");
+    if (!allRows.length) throw new Error("檔案內無資料");
+
+    // 只保留後端 COL_MAP 認識的欄位，丟掉其餘無用欄位
+    const KNOWN_COLS = new Set([
+      "路燈編號","開關箱編號","id",
+      "地址","詳細位置","address",
+      "緯度","lat","經度","lng",
+      "燈泡瓦數","瓦特數","watt",
+      "色溫","col",
+      "X","Y",
+      "區域","行政區"
+    ]);
+    const rows = allRows.map(r => {
+      const slim = {};
+      for (const k of Object.keys(r)) {
+        if (KNOWN_COLS.has(k.trim())) slim[k] = r[k];
+      }
+      return slim;
+    });
 
     // 解析行政區篩選（逗號或頓號分隔）
     const areasRaw = areasInput.value.trim();
