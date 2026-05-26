@@ -135,15 +135,16 @@
   <div id="customModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:10px;padding:24px;width:300px;max-width:90vw;font-family:sans-serif;">
       <h3 style="margin:0 0 14px">新增自訂地點</h3>
-      <label style="font-size:13px">名稱／地址</label>
-      <input id="customLabel" type="text" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+      <label style="font-size:13px">名稱／地址（必填）</label>
+      <input id="customLabel" type="text" placeholder="例：桃園市蘆竹區南崁路一段1號" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+      <p style="font-size:12px;color:#888;margin:0 0 8px">不填經緯度會自動用地址定位</p>
       <div style="display:flex;gap:8px">
         <div style="flex:1">
-          <label style="font-size:13px">緯度</label>
+          <label style="font-size:13px">緯度（選填）</label>
           <input id="customLat" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
         </div>
         <div style="flex:1">
-          <label style="font-size:13px">經度</label>
+          <label style="font-size:13px">經度（選填）</label>
           <input id="customLng" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
         </div>
       </div>

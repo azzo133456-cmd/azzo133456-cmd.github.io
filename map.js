@@ -112,10 +112,10 @@ function renderTaskList(area) {
   const list    = taskCache[area] || [];
 
   favList.innerHTML = `<option value="">任務清單（${list.length}）</option>`;
-  list.forEach(({ id }) => {
+  list.forEach(t => {
     const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = id;
+    opt.value = t.id;
+    opt.textContent = t.is_custom ? (t.address || t.id) : t.id;
     favList.appendChild(opt);
   });
 
