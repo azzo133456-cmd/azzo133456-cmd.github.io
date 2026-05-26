@@ -147,7 +147,7 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
     </span><br>
     <span style="display:inline-flex;gap:8px;margin-top:4px;">
       ${btn}
-      <button onclick="openEdit('${id}','${addrEsc}',${watt ?? "null"},${col ?? "null"})">編輯</button>
+      <button onclick="openEdit('${id}','${addrEsc}',${lat},${lng},${watt ?? "null"},${col ?? "null"})">編輯</button>
     </span><br>
     <a href="${nav}" target="_blank">導航</a>
   `;
@@ -232,10 +232,12 @@ document.getElementById("favList").addEventListener("change", function () {
 // ─────────────────────────────────────────
 let _editId = null;
 
-function openEdit(id, address, watt, col) {
+function openEdit(id, address, lat, lng, watt, col) {
   _editId = id;
   document.getElementById("editId").textContent = `編號：${id}`;
   document.getElementById("editAddress").value = address || "";
+  document.getElementById("editLat").value     = lat  ?? "";
+  document.getElementById("editLng").value     = lng  ?? "";
   document.getElementById("editWatt").value    = watt ?? "";
   document.getElementById("editCol").value     = col  ?? "";
   document.getElementById("editStatus").textContent = "";
@@ -249,6 +251,8 @@ async function saveEdit() {
 
   const body = {
     address: document.getElementById("editAddress").value.trim() || null,
+    lat:     document.getElementById("editLat").value  !== "" ? document.getElementById("editLat").value  : null,
+    lng:     document.getElementById("editLng").value  !== "" ? document.getElementById("editLng").value  : null,
     watt:    document.getElementById("editWatt").value !== "" ? Number(document.getElementById("editWatt").value) : null,
     col:     document.getElementById("editCol").value  !== "" ? Number(document.getElementById("editCol").value)  : null,
   };
