@@ -3,15 +3,15 @@ html, body {
   padding: 0;
   height: 100%;
   overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", sans-serif;
 }
 
 /* 全螢幕首頁 */
 #fullHome {
   position: fixed;
-  top: 0;
-  left: 0;
+  top: 0; left: 0;
   width: 100%;
-  height: calc(100% - 90px); /* ⭐ 留出廣告高度 */
+  height: calc(100% - 90px);
   background: white;
   z-index: 999999;
   display: flex;
@@ -19,87 +19,283 @@ html, body {
   justify-content: center;
   align-items: center;
   padding: 30px;
+  box-sizing: border-box;
 }
 
-/* 標題 */
 .home-title {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: bold;
-  margin-bottom: 40px;
-  color: #333;
+  margin-bottom: 36px;
+  color: #2F4F7F;
+  letter-spacing: 2px;
 }
 
-/* 按鈕區 */
 .home-buttons {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  width: 80%;
-  max-width: 300px;
+  gap: 16px;
+  width: 85%;
+  max-width: 320px;
 }
 
-/* App 風格按鈕 */
 .home-btn {
-  background: #f5f5f5;
+  background: #fff;
   padding: 18px 0;
   text-align: center;
   border-radius: 14px;
   font-size: 20px;
   font-weight: bold;
-  border: 1px solid #ddd;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-  transition: 0.2s;
+  border: 2px solid #e0e6f0;
+  box-shadow: 0 2px 8px rgba(47,79,127,0.1);
+  color: #2F4F7F;
+  cursor: pointer;
+  transition: 0.15s;
 }
 
 .home-btn:active {
-  background: #e0e0e0;
+  background: #EFF3FB;
   transform: scale(0.97);
 }
 
 /* 上方搜尋列 */
 #ui {
-  height: 60px;
-  padding: 10px;
+  height: 54px;
+  padding: 8px 10px;
   background: white;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #e0e6f0;
   z-index: 9999;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
-/* ⭐ 電腦版 + 手機版都靠這段撐住地圖高度 */
+#lampInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1.5px solid #dde3ee;
+  border-radius: 20px;
+  font-size: 15px;
+  outline: none;
+  background: #f7f9fd;
+}
+
+#ui button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#ui button:active { opacity: 0.75; }
+
+/* 查詢按鈕 */
+#searchBtn {
+  background: #2F4F7F;
+  color: #fff;
+}
+
+/* 清單按鈕 */
+#taskListBtn {
+  display: none;
+  background: #EFF3FB;
+  color: #2F4F7F;
+  position: relative;
+}
+
+#taskCount {
+  display: inline-block;
+  background: #2F4F7F;
+  color: #fff;
+  border-radius: 10px;
+  font-size: 11px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  font-weight: bold;
+}
+
+/* 地圖容器 */
 #mapContainer {
   width: 100%;
-  height: calc(100vh - 60px - 90px); /* 60 = 搜尋列, 90 = 廣告 */
+  height: calc(100vh - 54px);
   position: relative;
   overflow: hidden;
 }
 
-/* 地圖本體 */
-#map {
-  width: 100%;
-  height: 100%;
-}
+#map { width: 100%; height: 100%; }
 
-/* 懸浮定位按鈕 */
+/* 定位按鈕 */
 #locateBtn {
   position: fixed;
-  bottom: 90px; /* 避開底部廣告 */
-  right: 20px;
-  z-index: 99999;
+  bottom: 16px;
+  right: 60px;
+  z-index: 999;
   background: white;
   border: 1px solid #ccc;
   padding: 12px;
   border-radius: 50%;
   font-size: 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  cursor: pointer;
 }
 
-/* 底部廣告固定高度 */
-#adArea {
-  width: 100%;
-  height: 90px;
-  background: #f8f8f8;
+
+/* ═══════════════════════════════════
+   任務清單底部面板
+═══════════════════════════════════ */
+#taskPanel {
+  position: fixed;
+  bottom: 0;
+  left: 0; right: 0;
+  height: 0;
+  background: #fff;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -3px 20px rgba(0,0,0,0.15);
+  z-index: 8000;
+  transition: height 0.3s cubic-bezier(.4,0,.2,1);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#taskPanel.open {
+  height: 55vh;
+}
+
+/* 面板把手 */
+.panel-handle {
+  width: 36px; height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  margin: 10px auto 0;
+  flex-shrink: 0;
+}
+
+/* 面板標頭 */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2F4F7F;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.panel-action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #EFF3FB;
+  color: #2F4F7F;
+}
+
+.panel-action-btn:active { opacity: 0.7; }
+
+/* 任務卡片清單 */
+#taskCards {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 12px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 單張任務卡片 */
+.task-card {
+  display: flex;
+  align-items: center;
+  background: #f7f9fd;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  cursor: pointer;
+  border: 1.5px solid #e8edf6;
+  transition: background 0.15s;
+  gap: 10px;
+}
+
+.task-card:active { background: #e4eaf6; }
+
+.task-card-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.task-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-id {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2F4F7F;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-card-addr {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-card-meta {
+  font-size: 11px;
+  color: #999;
+  margin-top: 3px;
+}
+
+.task-del-btn {
+  flex-shrink: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: #fee;
+  color: #c00;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.task-del-btn:active { background: #fcc; }
+
+.task-empty {
+  text-align: center;
+  color: #aaa;
+  font-size: 14px;
+  padding: 32px 0;
+}
+
+/* 遮罩（面板開啟時點外部關閉） */
+#taskOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 7999;
+  background: transparent;
 }

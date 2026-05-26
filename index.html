@@ -3,100 +3,74 @@
 <head>
   <meta charset="UTF-8" />
   <title>路燈查詢地圖</title>
-
-  <!-- Leaflet CSS -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-
-  <!-- 自己的 CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
-
-  <!-- AdSense 啟用碼 -->
-  <meta name="google-adsense-account" content="ca-pub-4403695228861827">
-
-  <!-- 自動廣告 script -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4403695228861827"
-        crossorigin="anonymous"></script>
-
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  
 </head>
 
 <body>
 
- <!-- ⭐ 全螢幕首頁（獨立層） -->
+  <!-- 全螢幕首頁 -->
   <div id="fullHome">
-    <div class="home-title">選擇地區</div>
-
+    <div class="home-title">路燈查詢</div>
     <div class="home-buttons">
-      <div class="home-btn" onclick="enterMode('home')">主頁</div>
+      <div class="home-btn" onclick="enterMode('fullhome')">全區</div>
       <div class="home-btn" onclick="enterMode('luzhu')">蘆竹</div>
       <div class="home-btn" onclick="enterMode('yangmei')">楊梅</div>
     </div>
   </div>
-  
-  <!-- 上方搜尋 UI -->
+
+  <!-- 上方搜尋列 -->
   <div id="ui">
     <input id="lampInput" type="text" placeholder="輸入路燈編號">
-    <button onclick="searchLamp()">查詢</button>
-    <select id="favList" style="display:none;">
-  <option value="">我的清單</option>
-</select>
-
-<button id="delFavBtn"   style="display:none;" onclick="deleteFav()">刪除</button>
-<button id="batchBtn"   style="display:none;" onclick="document.getElementById('batchModal').style.display='flex'">批次+</button>
-<button id="customBtn"  style="display:none;" onclick="document.getElementById('customModal').style.display='flex'">自訂+</button>
+    <button id="searchBtn" onclick="searchLamp()">查詢</button>
+    <button id="taskListBtn" onclick="toggleTaskPanel()">
+      清單 <span id="taskCount">0</span>
+    </button>
   </div>
 
-<a href="privacy.html">隱私權政策</a>
-  
-  <!-- 地圖容器（中間區域） -->
+  <!-- 地圖 -->
   <div id="mapContainer">
-  <div id="map"></div>
-  <button id="locateBtn" onclick="locateUser()">📍</button>
-</div>
-
-  <!-- 底部廣告區（唯一一個） -->
-  <div id="adArea">
-    <ins class="adsbygoogle"
-         style="display:block;width:100%;height:100%;"
-         data-ad-client="ca-pub-4403695228861827"
-         data-ad-slot="8678362216"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-
-    <script>
-         (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
+    <div id="map"></div>
+    <button id="locateBtn" onclick="locateUser()">📍</button>
   </div>
 
+  <!-- 任務清單遮罩 -->
+  <div id="taskOverlay" onclick="closeTaskPanel()"></div>
+
+  <!-- 任務清單底部面板 -->
+  <div id="taskPanel">
+    <div class="panel-handle"></div>
+    <div class="panel-header">
+      <span class="panel-title">任務清單</span>
+      <div class="panel-actions">
+        <button class="panel-action-btn" onclick="document.getElementById('batchModal').style.display='flex'">批次＋</button>
+        <button class="panel-action-btn" onclick="document.getElementById('customModal').style.display='flex'">自訂＋</button>
+      </div>
+    </div>
+    <div id="taskCards"></div>
+  </div>
 
   <!-- 編輯 Modal -->
   <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:10px;padding:24px;width:300px;max-width:90vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 4px">編輯路燈</h3>
+    <div style="background:#fff;border-radius:14px;padding:24px;width:300px;max-width:92vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 4px;color:#2F4F7F">編輯路燈</h3>
       <p id="editId" style="margin:0 0 14px;font-size:13px;color:#888"></p>
-      <label style="font-size:13px">地址</label>
-      <input id="editAddress" type="text" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+      <label style="font-size:13px;color:#555">地址</label>
+      <input id="editAddress" type="text" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
       <div style="display:flex;gap:8px">
-        <div style="flex:1">
-          <label style="font-size:13px">緯度</label>
-          <input id="editLat" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
-        </div>
-        <div style="flex:1">
-          <label style="font-size:13px">經度</label>
-          <input id="editLng" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
-        </div>
+        <div style="flex:1"><label style="font-size:13px;color:#555">緯度</label>
+          <input id="editLat" type="number" step="any" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px"></div>
+        <div style="flex:1"><label style="font-size:13px;color:#555">經度</label>
+          <input id="editLng" type="number" step="any" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px"></div>
       </div>
-      <label style="font-size:13px">瓦數（W）</label>
-      <input id="editWatt" type="number" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
-      <label style="font-size:13px">色溫（K）</label>
-      <input id="editCol" type="number" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+      <label style="font-size:13px;color:#555">瓦數（W）</label>
+      <input id="editWatt" type="number" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
+      <label style="font-size:13px;color:#555">色溫（K）</label>
+      <input id="editCol" type="number" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 16px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
       <div style="display:flex;gap:8px">
-        <button onclick="saveEdit()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">儲存</button>
-        <button onclick="document.getElementById('editModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+        <button onclick="saveEdit()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">儲存</button>
+        <button onclick="document.getElementById('editModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="editStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
@@ -104,14 +78,14 @@
 
   <!-- 匯入 Modal -->
   <div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:10px;padding:24px;width:320px;max-width:90vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 16px">匯入路燈資料</h3>
+    <div style="background:#fff;border-radius:14px;padding:24px;width:320px;max-width:92vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 12px;color:#2F4F7F">匯入路燈資料</h3>
       <p style="font-size:13px;color:#555;margin:0 0 12px">支援格式：路燈/開關箱 Excel（中文欄名）<br>TWD97 X/Y 座標自動轉換經緯度</p>
       <input id="importFile" type="file" accept=".xlsx,.csv" style="width:100%;margin-bottom:12px">
-      <input id="importAreas" type="text" placeholder="篩選行政區（選填）例：汐止區,五股區,三重區" style="width:100%;padding:6px;box-sizing:border-box;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;font-size:13px">
+      <input id="importAreas" type="text" placeholder="篩選行政區（選填）例：汐止區,五股區" style="width:100%;padding:8px;box-sizing:border-box;margin-bottom:12px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px">
       <div style="display:flex;gap:8px">
-        <button id="importBtn" onclick="doImport()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">匯入</button>
-        <button onclick="document.getElementById('importModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+        <button id="importBtn" onclick="doImport()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">匯入</button>
+        <button onclick="document.getElementById('importModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="importStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
@@ -119,13 +93,13 @@
 
   <!-- 批次加入清單 Modal -->
   <div id="batchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:10px;padding:24px;width:320px;max-width:90vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 8px">批次加入清單</h3>
+    <div style="background:#fff;border-radius:14px;padding:24px;width:320px;max-width:92vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 8px;color:#2F4F7F">批次加入清單</h3>
       <p style="font-size:13px;color:#555;margin:0 0 10px">每行一個路燈編號</p>
-      <textarea id="batchIds" rows="8" style="width:100%;padding:6px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;font-size:13px;resize:vertical"></textarea>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button onclick="doBatchAdd()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">加入</button>
-        <button onclick="document.getElementById('batchModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+      <textarea id="batchIds" rows="7" style="width:100%;padding:8px;box-sizing:border-box;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button onclick="doBatchAdd()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">加入</button>
+        <button onclick="document.getElementById('batchModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="batchStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
@@ -133,35 +107,31 @@
 
   <!-- 自訂地點 Modal -->
   <div id="customModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:10px;padding:24px;width:300px;max-width:90vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 14px">新增自訂地點</h3>
-      <label style="font-size:13px">名稱／地址（必填）</label>
-      <input id="customLabel" type="text" placeholder="例：桃園市蘆竹區南崁路一段1號" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
-      <p style="font-size:12px;color:#888;margin:0 0 8px">不填經緯度會自動用地址定位</p>
+    <div style="background:#fff;border-radius:14px;padding:24px;width:300px;max-width:92vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 14px;color:#2F4F7F">新增自訂地點</h3>
+      <label style="font-size:13px;color:#555">名稱／地址（必填）</label>
+      <input id="customLabel" type="text" placeholder="例：桃園市蘆竹區南崁路一段1號" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
+      <p style="font-size:12px;color:#999;margin:0 0 10px">不填經緯度會自動用地址定位</p>
       <div style="display:flex;gap:8px">
-        <div style="flex:1">
-          <label style="font-size:13px">緯度（選填）</label>
-          <input id="customLat" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
-        </div>
-        <div style="flex:1">
-          <label style="font-size:13px">經度（選填）</label>
-          <input id="customLng" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
-        </div>
+        <div style="flex:1"><label style="font-size:13px;color:#555">緯度（選填）</label>
+          <input id="customLat" type="number" step="any" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px"></div>
+        <div style="flex:1"><label style="font-size:13px;color:#555">經度（選填）</label>
+          <input id="customLng" type="number" step="any" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px"></div>
       </div>
       <div style="display:flex;gap:8px">
-        <button onclick="doAddCustom()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">新增</button>
-        <button onclick="document.getElementById('customModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+        <button onclick="doAddCustom()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">新增</button>
+        <button onclick="document.getElementById('customModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="customStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
   </div>
 
-  <!-- 管理員入口（長按地圖標題 3 秒開啟） -->
-  <div id="adminBtn" onclick="openImport()" style="position:fixed;bottom:60px;right:12px;width:36px;height:36px;background:rgba(47,79,127,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;z-index:1000" title="管理員">⚙️</div>
+  <!-- 管理員按鈕 -->
+  <div id="adminBtn" onclick="openImport()" style="position:fixed;bottom:16px;right:14px;width:36px;height:36px;background:rgba(47,79,127,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;z-index:1000">⚙️</div>
 
-  <!-- Leaflet JS -->
+  <a href="privacy.html" style="position:fixed;bottom:20px;left:14px;font-size:11px;color:#aaa;z-index:1000;text-decoration:none">隱私權政策</a>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- SheetJS（Excel 解析） -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="map.js"></script>
 

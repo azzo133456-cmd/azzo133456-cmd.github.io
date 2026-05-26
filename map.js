@@ -69,57 +69,69 @@ function switchMode(newMode) {
 
   const isRegion = mode === "luzhu" || mode === "yangmei";
 
-  document.getElementById("fullHome").style.display  = mode === "fullhome" ? "flex" : "none";
-  document.getElementById("favList").style.display   = isRegion ? "inline-block" : "none";
-  document.getElementById("delFavBtn").style.display = isRegion ? "inline-block" : "none";
-  document.getElementById("batchBtn").style.display  = isRegion ? "inline-block" : "none";
-  document.getElementById("customBtn").style.display = isRegion ? "inline-block" : "none";
+  document.getElementById("fullHome").style.display   = mode === "fullhome" ? "flex" : "none";
+  document.getElementById("taskListBtn").style.display = isRegion ? "inline-block" : "none";
 
   // 清掉舊 markers
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
 
+  closeTaskPanel();
+
   if (mode === "fullhome") return;
 
-  if (mode === "luzhu") {
-    map.setView([25.012, 121.288], 13);
-  } else if (mode === "yangmei") {
-    map.setView([24.916, 121.135], 13);
-  }
+  if (mode === "luzhu")   map.setView([25.012, 121.288], 13);
+  if (mode === "yangmei") map.setView([24.916, 121.135], 13);
 
   loadAndRenderTasks(mode);
 }
 
 // ─────────────────────────────────────────
-// 任務清單：從伺服器載入並渲染
+// 任務清單：載入、渲染、面板開關
 // ─────────────────────────────────────────
 async function loadAndRenderTasks(area) {
-  const favList = document.getElementById("favList");
-  favList.innerHTML = `<option value="">載入中…</option>`;
-
   try {
     const res  = await fetch(`${API}/tasks/${area}`);
     const list = await res.json();
     taskCache[area] = list;
     renderTaskList(area);
   } catch {
-    favList.innerHTML = `<option value="">載入失敗</option>`;
+    document.getElementById("taskCards").innerHTML = `<p class="task-empty">載入失敗</p>`;
   }
 }
 
 function renderTaskList(area) {
-  const favList = document.getElementById("favList");
   const list    = taskCache[area] || [];
+  const cards   = document.getElementById("taskCards");
+  const countEl = document.getElementById("taskCount");
 
-  favList.innerHTML = `<option value="">任務清單（${list.length}）</option>`;
-  list.forEach(t => {
-    const opt = document.createElement("option");
-    opt.value = t.id;
-    opt.textContent = t.is_custom ? (t.address || t.id) : t.id;
-    favList.appendChild(opt);
-  });
+  countEl.textContent = list.length;
 
-  // 清掉舊 markers 再畫新的
+  if (!list.length) {
+    cards.innerHTML = `<p class="task-empty">清單是空的<br>搜尋路燈後點「加入清單」</p>`;
+    favMarkers.forEach(m => map.removeLayer(m));
+    favMarkers = [];
+    return;
+  }
+
+  cards.innerHTML = list.map(t => {
+    const name    = t.is_custom ? (t.address || t.id) : t.id;
+    const addr    = (!t.is_custom && t.address) ? t.address : "";
+    const meta    = [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
+    const icon    = t.is_custom ? "📍" : "💡";
+    return `
+      <div class="task-card" onclick="goToTask('${t.id}')">
+        <span class="task-card-icon">${icon}</span>
+        <div class="task-card-body">
+          <div class="task-card-id">${name}</div>
+          ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
+          ${meta ? `<div class="task-card-meta">${meta}</div>` : ""}
+        </div>
+        <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${t.id}')">×</button>
+      </div>`;
+  }).join("");
+
+  // 重繪 markers
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = list
     .filter(t => t.lat && t.lng)
@@ -128,6 +140,34 @@ function renderTaskList(area) {
       m.bindPopup(popupHTML(t, true));
       return m;
     });
+}
+
+function goToTask(id) {
+  const list = taskCache[mode] || [];
+  const t    = list.find(x => x.id === id);
+  if (t?.lat && t?.lng) {
+    map.setView([Number(t.lat), Number(t.lng)], 18);
+    closeTaskPanel();
+    const marker = favMarkers.find((m, i) => list[i]?.id === id);
+    if (marker) setTimeout(() => marker.openPopup(), 300);
+  }
+}
+
+function toggleTaskPanel() {
+  const panel   = document.getElementById("taskPanel");
+  const overlay = document.getElementById("taskOverlay");
+  const isOpen  = panel.classList.contains("open");
+  if (isOpen) {
+    closeTaskPanel();
+  } else {
+    panel.classList.add("open");
+    overlay.style.display = "block";
+  }
+}
+
+function closeTaskPanel() {
+  document.getElementById("taskPanel").classList.remove("open");
+  document.getElementById("taskOverlay").style.display = "none";
 }
 
 // ─────────────────────────────────────────
@@ -215,16 +255,6 @@ async function removeFav(id) {
   await loadAndRenderTasks(mode);
 }
 
-async function deleteFav() {
-  const id = document.getElementById("favList").value;
-  if (!id) return alert("請先選擇要刪除的路燈");
-  await removeFav(id);
-}
-
-document.getElementById("favList").addEventListener("change", function () {
-  const item = taskCache[mode]?.find(t => t.id === this.value);
-  if (item?.lat && item?.lng) map.setView([Number(item.lat), Number(item.lng)], 18);
-});
 
 // ─────────────────────────────────────────
 // 定位 + 最近路燈
