@@ -269,7 +269,7 @@ async function doAddCustom() {
   const lng    = document.getElementById("customLng").value.trim();
 
   if (!label) { status.textContent = "請輸入名稱或地址"; return; }
-  if (!lat && !lng) status.textContent = "定位中…";
+  if (!lat || !lng) status.textContent = "定位中…";
 
   const res    = await fetch(`${API}/tasks/${mode}/custom`, {
     method: "POST",
