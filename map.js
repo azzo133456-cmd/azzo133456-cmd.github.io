@@ -13,25 +13,9 @@ let customMarkers = [];
 let favMarkers = [];
 
 // ─────────────────────────────────────────
-// favData 載入 / 儲存
+// 任務清單（伺服器同步）
 // ─────────────────────────────────────────
-function loadFavData() {
-  try {
-    const raw = JSON.parse(localStorage.getItem("favData") || "{}");
-    return {
-      luzhu:   Array.isArray(raw.luzhu)   ? raw.luzhu   : [],
-      yangmei: Array.isArray(raw.yangmei) ? raw.yangmei : []
-    };
-  } catch {
-    return { luzhu: [], yangmei: [] };
-  }
-}
-
-function saveFavData() {
-  localStorage.setItem("favData", JSON.stringify(favData));
-}
-
-let favData = loadFavData();
+let taskCache = { luzhu: [], yangmei: [] }; // 本地快取
 
 // ─────────────────────────────────────────
 // 地圖初始化
@@ -53,10 +37,7 @@ window.addEventListener("load", () => {
 });
 
 // BFCache（上一頁回來）時重新同步
-window.addEventListener("pageshow", (e) => {
-  favData = loadFavData();
-  handleRoute();
-});
+window.addEventListener("pageshow", () => handleRoute());
 
 window.addEventListener("hashchange", handleRoute);
 
@@ -88,58 +69,63 @@ function switchMode(newMode) {
 
   const isRegion = mode === "luzhu" || mode === "yangmei";
 
-  document.getElementById("fullHome").style.display  = mode === "fullhome" ? "flex"         : "none";
-  document.getElementById("favList").style.display   = isRegion            ? "inline-block" : "none";
-  document.getElementById("delFavBtn").style.display = isRegion            ? "inline-block" : "none";
+  document.getElementById("fullHome").style.display  = mode === "fullhome" ? "flex" : "none";
+  document.getElementById("favList").style.display   = isRegion ? "inline-block" : "none";
+  document.getElementById("delFavBtn").style.display = isRegion ? "inline-block" : "none";
 
-  // 清掉區域路燈 markers
-  customMarkers.forEach(m => map.removeLayer(m));
-  customMarkers = [];
-
-  // 清掉舊的收藏 markers（每次都重畫，避免跨區殘留）
+  // 清掉舊 markers
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
 
   if (mode === "fullhome") return;
 
   if (mode === "luzhu") {
-    loadCustomMarkers(luzhuList);
-    map.setView([25.012, 121.288], 14);
+    map.setView([25.012, 121.288], 13);
   } else if (mode === "yangmei") {
-    loadCustomMarkers(yangmeiList);
-    map.setView([24.916, 121.135], 14);
-  } else {
-    map.setView([25.033, 121.565], 12);
-    return;
+    map.setView([24.916, 121.135], 13);
   }
 
-  renderFav(); // 只有區域模式才渲染收藏清單
+  loadAndRenderTasks(mode);
 }
 
 // ─────────────────────────────────────────
-// 渲染收藏清單 + Markers
+// 任務清單：從伺服器載入並渲染
 // ─────────────────────────────────────────
-function renderFav() {
+async function loadAndRenderTasks(area) {
   const favList = document.getElementById("favList");
-  favList.innerHTML = `<option value="">我的清單</option>`;
+  favList.innerHTML = `<option value="">載入中…</option>`;
 
-  // 重新從 localStorage 確保資料最新
-  favData = loadFavData();
+  try {
+    const res  = await fetch(`${API}/tasks/${area}`);
+    const list = await res.json();
+    taskCache[area] = list;
+    renderTaskList(area);
+  } catch {
+    favList.innerHTML = `<option value="">載入失敗</option>`;
+  }
+}
 
-  const list = favData[mode] || [];
+function renderTaskList(area) {
+  const favList = document.getElementById("favList");
+  const list    = taskCache[area] || [];
 
-  list.forEach(({ id, lat, lng }) => {
+  favList.innerHTML = `<option value="">任務清單（${list.length}）</option>`;
+  list.forEach(({ id }) => {
     const opt = document.createElement("option");
     opt.value = id;
     opt.textContent = id;
     favList.appendChild(opt);
   });
 
-  favMarkers = list.map(({ id, lat, lng }) => {
-    const m = L.marker([lat, lng]).addTo(map);
-    m.bindPopup(popupHTML({ id, lat, lng }, true));
-    return m;
-  });
+  // 清掉舊 markers 再畫新的
+  favMarkers.forEach(m => map.removeLayer(m));
+  favMarkers = list
+    .filter(t => t.lat && t.lng)
+    .map(t => {
+      const m = L.marker([Number(t.lat), Number(t.lng)]).addTo(map);
+      m.bindPopup(popupHTML(t, true));
+      return m;
+    });
 }
 
 // ─────────────────────────────────────────
@@ -149,7 +135,7 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
   const nav = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
   const btn = isFav
     ? `<button onclick="removeFav('${id}')">刪除</button>`
-    : `<button onclick="addFav('${id}', ${lat}, ${lng})">加入清單</button>`;
+    : `<button onclick="addFav('${id}')">加入清單</button>`;
   const addrEsc = (address || "").replace(/'/g, "\\'");
   return `
     <b>路燈編號：</b>${id}<br>
@@ -204,31 +190,38 @@ async function showLamp(id) {
 // ─────────────────────────────────────────
 // 清單管理
 // ─────────────────────────────────────────
-function addFav(id, lat, lng) {
+async function addFav(id) {
   if (!["luzhu", "yangmei"].includes(mode)) return alert("請先選擇蘆竹或楊梅模式");
-  if (favData[mode].some(item => item.id === id)) return alert("已在清單中");
-  favData[mode].push({ id, lat, lng });
-  saveFavData();
-  renderFav();
-  alert("已加入清單");
+  if (taskCache[mode]?.some(t => t.id === id)) return alert("已在清單中");
+  const res = await fetch(`${API}/tasks/${mode}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id })
+  });
+  const result = await res.json();
+  if (result.ok) {
+    await loadAndRenderTasks(mode);
+    alert("已加入清單");
+  } else {
+    alert(`❌ ${result.error}`);
+  }
 }
 
-function removeFav(id) {
+async function removeFav(id) {
   if (!["luzhu", "yangmei"].includes(mode)) return;
-  favData[mode] = favData[mode].filter(item => item.id !== id);
-  saveFavData();
-  renderFav();
+  await fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
+  await loadAndRenderTasks(mode);
 }
 
-function deleteFav() {
+async function deleteFav() {
   const id = document.getElementById("favList").value;
   if (!id) return alert("請先選擇要刪除的路燈");
-  removeFav(id);
+  await removeFav(id);
 }
 
 document.getElementById("favList").addEventListener("change", function () {
-  const item = favData[mode]?.find(x => x.id === this.value);
-  if (item) map.setView([item.lat, item.lng], 18);
+  const item = taskCache[mode]?.find(t => t.id === this.value);
+  if (item?.lat && item?.lng) map.setView([Number(item.lat), Number(item.lng)], 18);
 });
 
 // ─────────────────────────────────────────
