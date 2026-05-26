@@ -4,8 +4,8 @@
 const API = "https://api.azzo133456.page";
 
 // Hash ↔ mode 對照表
-const ROUTES = { "": "fullhome", "LZ": "luzhu", "YM": "yangmei" };
-const HASHES = { fullhome: "", luzhu: "LZ", yangmei: "YM" };
+const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei" };
+const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM" };
 
 let mode = "fullhome";
 let currentMarker = null;
@@ -69,16 +69,17 @@ function switchMode(newMode) {
 
   const isRegion = mode === "luzhu" || mode === "yangmei";
 
-  document.getElementById("fullHome").style.display   = mode === "fullhome" ? "flex" : "none";
+  document.getElementById("fullHome").style.display    = mode === "fullhome" ? "flex" : "none";
   document.getElementById("taskListBtn").style.display = isRegion ? "inline-block" : "none";
+  document.getElementById("backBtn").style.display     = mode !== "fullhome" ? "inline-block" : "none";
 
-  // 清掉舊 markers
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
 
   closeTaskPanel();
 
   if (mode === "fullhome") return;
+  if (mode === "home") { map.setView([25.033, 121.565], 12); return; }
 
   if (mode === "luzhu")   map.setView([25.012, 121.288], 13);
   if (mode === "yangmei") map.setView([24.916, 121.135], 13);
