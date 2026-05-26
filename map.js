@@ -72,6 +72,8 @@ function switchMode(newMode) {
   document.getElementById("fullHome").style.display  = mode === "fullhome" ? "flex" : "none";
   document.getElementById("favList").style.display   = isRegion ? "inline-block" : "none";
   document.getElementById("delFavBtn").style.display = isRegion ? "inline-block" : "none";
+  document.getElementById("batchBtn").style.display  = isRegion ? "inline-block" : "none";
+  document.getElementById("customBtn").style.display = isRegion ? "inline-block" : "none";
 
   // 清掉舊 markers
   favMarkers.forEach(m => map.removeLayer(m));
@@ -227,6 +229,69 @@ document.getElementById("favList").addEventListener("change", function () {
 // ─────────────────────────────────────────
 // 定位 + 最近路燈
 // ─────────────────────────────────────────
+// ─────────────────────────────────────────
+// 批次加入清單
+// ─────────────────────────────────────────
+async function doBatchAdd() {
+  if (!["luzhu", "yangmei"].includes(mode)) return;
+  const status = document.getElementById("batchStatus");
+  const raw    = document.getElementById("batchIds").value.trim();
+  if (!raw) { status.textContent = "請輸入路燈編號"; return; }
+
+  const ids = raw.split(/[\n,，、\s]+/).map(s => s.trim()).filter(Boolean);
+  status.textContent = `送出 ${ids.length} 筆…`;
+
+  const res    = await fetch(`${API}/tasks/${mode}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  });
+  const result = await res.json();
+
+  let msg = `✅ 加入 ${result.added} 筆`;
+  if (result.notFound?.length) msg += `，查無：${result.notFound.join("、")}`;
+  status.textContent = msg;
+
+  await loadAndRenderTasks(mode);
+  if (!result.notFound?.length) {
+    setTimeout(() => document.getElementById("batchModal").style.display = "none", 1000);
+  }
+}
+
+// ─────────────────────────────────────────
+// 自訂地點加入清單
+// ─────────────────────────────────────────
+async function doAddCustom() {
+  if (!["luzhu", "yangmei"].includes(mode)) return;
+  const status = document.getElementById("customStatus");
+  const label  = document.getElementById("customLabel").value.trim();
+  const lat    = document.getElementById("customLat").value.trim();
+  const lng    = document.getElementById("customLng").value.trim();
+
+  if (!lat || !lng) { status.textContent = "請輸入經緯度"; return; }
+
+  const res    = await fetch(`${API}/tasks/${mode}/custom`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label, lat, lng })
+  });
+  const result = await res.json();
+
+  if (result.ok) {
+    status.textContent = "✅ 已新增";
+    await loadAndRenderTasks(mode);
+    setTimeout(() => {
+      document.getElementById("customModal").style.display = "none";
+      document.getElementById("customLabel").value = "";
+      document.getElementById("customLat").value   = "";
+      document.getElementById("customLng").value   = "";
+      status.textContent = "";
+    }, 800);
+  } else {
+    status.textContent = `❌ ${result.error}`;
+  }
+}
+
 // ─────────────────────────────────────────
 // 單筆編輯
 // ─────────────────────────────────────────

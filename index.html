@@ -45,7 +45,9 @@
   <option value="">我的清單</option>
 </select>
 
-<button id="delFavBtn" style="display:none;" onclick="deleteFav()">刪除</button>
+<button id="delFavBtn"   style="display:none;" onclick="deleteFav()">刪除</button>
+<button id="batchBtn"   style="display:none;" onclick="document.getElementById('batchModal').style.display='flex'">批次+</button>
+<button id="customBtn"  style="display:none;" onclick="document.getElementById('customModal').style.display='flex'">自訂+</button>
   </div>
 
 <a href="privacy.html">隱私權政策</a>
@@ -112,6 +114,44 @@
         <button onclick="document.getElementById('importModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
       </div>
       <p id="importStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
+    </div>
+  </div>
+
+  <!-- 批次加入清單 Modal -->
+  <div id="batchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:10px;padding:24px;width:320px;max-width:90vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 8px">批次加入清單</h3>
+      <p style="font-size:13px;color:#555;margin:0 0 10px">每行一個路燈編號</p>
+      <textarea id="batchIds" rows="8" style="width:100%;padding:6px;box-sizing:border-box;border:1px solid #ccc;border-radius:4px;font-size:13px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button onclick="doBatchAdd()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">加入</button>
+        <button onclick="document.getElementById('batchModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+      </div>
+      <p id="batchStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
+    </div>
+  </div>
+
+  <!-- 自訂地點 Modal -->
+  <div id="customModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:10px;padding:24px;width:300px;max-width:90vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 14px">新增自訂地點</h3>
+      <label style="font-size:13px">名稱／地址</label>
+      <input id="customLabel" type="text" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1">
+          <label style="font-size:13px">緯度</label>
+          <input id="customLat" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:13px">經度</label>
+          <input id="customLng" type="number" step="any" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="doAddCustom()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">新增</button>
+        <button onclick="document.getElementById('customModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+      </div>
+      <p id="customStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
   </div>
 
