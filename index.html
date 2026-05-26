@@ -71,6 +71,25 @@
   </div>
 
 
+  <!-- 編輯 Modal -->
+  <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:10px;padding:24px;width:300px;max-width:90vw;font-family:sans-serif;">
+      <h3 style="margin:0 0 4px">編輯路燈</h3>
+      <p id="editId" style="margin:0 0 14px;font-size:13px;color:#888"></p>
+      <label style="font-size:13px">地址</label>
+      <input id="editAddress" type="text" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+      <label style="font-size:13px">瓦數（W）</label>
+      <input id="editWatt" type="number" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccc;border-radius:4px">
+      <label style="font-size:13px">色溫（K）</label>
+      <input id="editCol" type="number" style="width:100%;padding:6px;box-sizing:border-box;margin:4px 0 14px;border:1px solid #ccc;border-radius:4px">
+      <div style="display:flex;gap:8px">
+        <button onclick="saveEdit()" style="flex:1;padding:8px;background:#2F4F7F;color:#fff;border:none;border-radius:4px;cursor:pointer">儲存</button>
+        <button onclick="document.getElementById('editModal').style.display='none'" style="flex:1;padding:8px;background:#eee;border:none;border-radius:4px;cursor:pointer">取消</button>
+      </div>
+      <p id="editStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
+    </div>
+  </div>
+
   <!-- 匯入 Modal -->
   <div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:10px;padding:24px;width:320px;max-width:90vw;font-family:sans-serif;">

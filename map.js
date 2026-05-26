@@ -150,6 +150,7 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
   const btn = isFav
     ? `<button onclick="removeFav('${id}')">刪除</button>`
     : `<button onclick="addFav('${id}', ${lat}, ${lng})">加入清單</button>`;
+  const addrEsc = (address || "").replace(/'/g, "\\'");
   return `
     <b>路燈編號：</b>${id}<br>
     ${address ? `<b>地址：</b>${address}<br>` : ""}
@@ -158,7 +159,10 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
       <span><b>瓦數：</b>${watt != null ? watt + " W" : "—"}</span>
       <span><b>色溫：</b>${col  != null ? col  + " K" : "—"}</span>
     </span><br>
-    ${btn}<br>
+    <span style="display:inline-flex;gap:8px;margin-top:4px;">
+      ${btn}
+      <button onclick="openEdit('${id}','${addrEsc}',${watt ?? "null"},${col ?? "null"})">編輯</button>
+    </span><br>
     <a href="${nav}" target="_blank">導航</a>
   `;
 }
@@ -231,6 +235,46 @@ document.getElementById("favList").addEventListener("change", function () {
 // 定位 + 最近路燈
 // ─────────────────────────────────────────
 // ─────────────────────────────────────────
+// 單筆編輯
+// ─────────────────────────────────────────
+let _editId = null;
+
+function openEdit(id, address, watt, col) {
+  _editId = id;
+  document.getElementById("editId").textContent = `編號：${id}`;
+  document.getElementById("editAddress").value = address || "";
+  document.getElementById("editWatt").value    = watt ?? "";
+  document.getElementById("editCol").value     = col  ?? "";
+  document.getElementById("editStatus").textContent = "";
+  document.getElementById("editModal").style.display = "flex";
+}
+
+async function saveEdit() {
+  if (!_editId) return;
+  const status = document.getElementById("editStatus");
+  status.textContent = "儲存中…";
+
+  const body = {
+    address: document.getElementById("editAddress").value.trim() || null,
+    watt:    document.getElementById("editWatt").value !== "" ? Number(document.getElementById("editWatt").value) : null,
+    col:     document.getElementById("editCol").value  !== "" ? Number(document.getElementById("editCol").value)  : null,
+  };
+
+  try {
+    const res    = await fetch(`${API}/lamp/${encodeURIComponent(_editId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const result = await res.json();
+    if (result.ok) {
+      status.textContent = "✅ 儲存成功";
+      setTimeout(() => document.getElementById("editModal").style.display = "none", 800);
+    } else {
+      status.textContent = `❌ ${result.error}`;
+    }
+  } catch (e) {
+    status.textContent = `❌ ${e.message}`;
+  }
+}
+
+// ─────────────────────────────────────────
 // 管理員 / 匯入
 // ─────────────────────────────────────────
 function openImport() {
@@ -281,21 +325,24 @@ async function doImport() {
       ? areasRaw.split(/[,，、]/).map(a => a.trim()).filter(Boolean)
       : [];
 
-    status.textContent = `解析完成 ${rows.length} 筆，上傳中…`;
-
-    const res  = await fetch(`${API}/import`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ data: rows, areas })
-    });
-    const result = await res.json();
-
-    if (result.ok) {
-      status.textContent = `✅ 匯入成功：${result.count} 筆`;
-      fileInput.value = "";
-    } else {
-      status.textContent = `❌ ${result.error}`;
+    const BATCH = 2000;
+    let done = 0;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const chunk = rows.slice(i, i + BATCH);
+      const r = await fetch(`${API}/import`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ data: chunk, areas })
+      });
+      const result = await r.json();
+      if (!result.ok) throw new Error(result.error);
+      done += chunk.length;
+      const pct = Math.round(done / rows.length * 100);
+      status.textContent = `上傳中… ${pct}%（${done} / ${rows.length} 筆）`;
     }
+
+    status.textContent = `✅ 匯入完成：${done} 筆`;
+    fileInput.value = "";
   } catch (e) {
     status.textContent = `❌ 錯誤：${e.message}`;
   } finally {
