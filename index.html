@@ -23,8 +23,9 @@
   <!-- 上方搜尋列 -->
   <div id="ui">
     <button id="backBtn" onclick="enterMode('fullhome')" style="display:none;padding:8px 10px;border:none;border-radius:20px;background:#EFF3FB;color:#2F4F7F;font-size:18px;cursor:pointer;flex-shrink:0;">←</button>
-    <input id="lampInput" type="text" placeholder="輸入路燈編號">
+    <input id="lampInput" type="text" placeholder="路燈編號 / 地址">
     <button id="searchBtn" onclick="searchLamp()">查詢</button>
+    <button id="addLocationBtn" onclick="addFromInput()" style="display:none;padding:8px 12px;border:none;border-radius:20px;background:#EFF3FB;color:#2F4F7F;font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0;">＋</button>
     <button id="taskListBtn" onclick="toggleTaskPanel()">
       清單 <span id="taskCount">0</span>
     </button>

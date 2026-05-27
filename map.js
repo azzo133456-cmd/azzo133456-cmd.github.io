@@ -69,9 +69,10 @@ function switchMode(newMode) {
 
   const isRegion = mode === "luzhu" || mode === "yangmei";
 
-  document.getElementById("fullHome").style.display    = mode === "fullhome" ? "flex" : "none";
-  document.getElementById("taskListBtn").style.display = isRegion ? "inline-block" : "none";
-  document.getElementById("backBtn").style.display     = mode !== "fullhome" ? "inline-block" : "none";
+  document.getElementById("fullHome").style.display       = mode === "fullhome" ? "flex" : "none";
+  document.getElementById("taskListBtn").style.display    = isRegion ? "inline-block" : "none";
+  document.getElementById("addLocationBtn").style.display = isRegion ? "inline-block" : "none";
+  document.getElementById("backBtn").style.display        = mode !== "fullhome" ? "inline-block" : "none";
 
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
@@ -205,6 +206,39 @@ function searchLamp() {
   if (!id) return alert("請輸入路燈編號");
   showLamp(id);
   input.value = "";
+}
+
+// ＋ 按鈕：把輸入框的文字加入任務清單（地址自動定位）
+async function addFromInput() {
+  const input = document.getElementById("lampInput");
+  const text  = input.value.trim();
+  if (!text) return alert("請輸入路燈編號或地址");
+
+  const btn = document.getElementById("addLocationBtn");
+  btn.textContent = "…";
+  btn.disabled = true;
+
+  try {
+    const res    = await fetch(`${API}/tasks/${mode}/custom`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ label: text })
+    });
+    const result = await res.json();
+
+    if (result.ok) {
+      input.value = "";
+      await loadAndRenderTasks(mode);
+      toggleTaskPanel(); // 開啟清單面板讓使用者看到新增結果
+    } else {
+      alert(`❌ ${result.error}`);
+    }
+  } catch (e) {
+    alert(`❌ ${e.message}`);
+  } finally {
+    btn.textContent = "＋";
+    btn.disabled = false;
+  }
 }
 
 document.getElementById("lampInput").addEventListener("keydown", e => {
