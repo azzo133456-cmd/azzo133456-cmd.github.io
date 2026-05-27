@@ -78,10 +78,7 @@ function switchMode(newMode) {
   favMarkers = [];
 
   // 清除路線預覽
-  clearRouteLayers();
-  routeActive = false;
-  const routeBtn = document.getElementById("routeBtn");
-  if (routeBtn) { routeBtn.style.background = ""; routeBtn.style.color = ""; }
+  closeRoute();
 
   closeTaskPanel();
 
@@ -122,8 +119,6 @@ function renderTaskList(area) {
     return;
   }
 
-  const selectedIds = routeSelected[mode] || new Set();
-
   cards.innerHTML = list.map(t => {
     const name    = t.is_custom ? (t.address || t.id) : t.id;
     const addr    = (!t.is_custom && t.address) ? t.address : "";
@@ -131,12 +126,9 @@ function renderTaskList(area) {
     const icon    = t.is_custom ? "📍" : "💡";
     const priCls  = t.priority ? " priority" : "";
     const priBtnCls = t.priority ? " active" : "";
-    const isSel   = selectedIds.has(t.id);
-    const selCls  = isSel ? " selected" : "";
     const idSafe  = t.id.replace(/'/g, "\\'");
     return `
-      <div class="task-card${priCls}${selCls}" onclick="goToTask('${idSafe}')">
-        <button class="task-sel-btn${isSel ? ' active' : ''}" onclick="event.stopPropagation();toggleSelect('${idSafe}')"></button>
+      <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
         <span class="task-card-icon">${icon}</span>
         <div class="task-card-body">
           <div class="task-card-id">${name}</div>
@@ -205,9 +197,10 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
       <span><b>瓦數：</b>${watt != null ? watt + " W" : "—"}</span>
       <span><b>色溫：</b>${col  != null ? col  + " K" : "—"}</span>
     </span><br>
-    <span style="display:inline-flex;gap:8px;margin-top:4px;">
+    <span style="display:inline-flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
       ${btn}
       <button onclick="openEdit('${id}','${addrEsc}',${lat},${lng},${watt ?? "null"},${col ?? "null"})">編輯</button>
+      <button onclick="routeToPoint(${lat},${lng})" style="background:#1a73e8;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">路線</button>
     </span><br>
     <a href="${nav}" target="_blank">導航</a>
   `;
@@ -384,14 +377,6 @@ async function removeFav(id) {
 let routeLine       = null;
 let routeActive     = false;
 let routeNumMarkers = [];
-let routeSelected   = { luzhu: new Set(), yangmei: new Set() };
-
-function toggleSelect(id) {
-  if (!["luzhu", "yangmei"].includes(mode)) return;
-  const sel = routeSelected[mode];
-  if (sel.has(id)) sel.delete(id); else sel.add(id);
-  renderTaskList(mode);
-}
 
 function clearRouteLayers() {
   if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
@@ -415,81 +400,52 @@ function decodePolyline(encoded) {
   return pts;
 }
 
-async function toggleRoute() {
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+function closeRoute() {
+  clearRouteLayers();
+  routeActive = false;
+  document.getElementById("closeRouteBtn").style.display = "none";
+}
 
-  if (routeActive) {
-    clearRouteLayers();
-    document.getElementById("routeBtn").style.background = "";
-    document.getElementById("routeBtn").style.color = "";
-    routeActive = false;
-    return;
-  }
+async function routeToPoint(lat, lng) {
+  // 已有路線先清掉
+  closeRoute();
 
-  // 需要先定位
   if (!locationLatLng) {
-    alert("請先按 📍 取得你的位置，再規劃路線");
+    alert("請先按 📍 取得你的位置");
     return;
   }
 
-  const sel = routeSelected[mode];
-  const allList = (taskCache[mode] || []).filter(t => t.lat && t.lng);
-  const list = sel.size > 0 ? allList.filter(t => sel.has(t.id)) : allList;
-
-  if (list.length < 1) { alert("請在清單中勾選至少 1 個任務點"); return; }
-
-  const btn = document.getElementById("routeBtn");
-  btn.textContent = "規劃中…";
-  btn.disabled = true;
-  closeTaskPanel();
+  const closeBtn = document.getElementById("closeRouteBtn");
+  closeBtn.textContent = "規劃中…";
+  closeBtn.style.display = "block";
+  closeBtn.disabled = true;
 
   try {
     const origin      = `${locationLatLng[0]},${locationLatLng[1]}`;
-    const destination = `${Number(list[list.length-1].lat)},${Number(list[list.length-1].lng)}`;
-    const midPoints   = list.slice(0, -1).map(t => `${Number(t.lat)},${Number(t.lng)}`);
-
-    const params = new URLSearchParams({ origin, destination });
-    if (midPoints.length) params.set("waypoints", midPoints.join("|"));
-
-    const res  = await fetch(`${API}/directions?${params}`);
+    const destination = `${lat},${lng}`;
+    const res  = await fetch(`${API}/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`);
     const data = await res.json();
 
     if (data.status !== "OK" || !data.routes?.[0]) {
       alert(`路線規劃失敗：${data.status || "未知錯誤"}`);
-      clearRouteLayers();
+      closeBtn.style.display = "none";
       return;
     }
 
-    // 合併所有 leg 的 polyline
     const allPts = data.routes[0].legs.flatMap(leg =>
       leg.steps.flatMap(step => decodePolyline(step.polyline.points))
     );
 
-    routeLine = L.polyline(allPts, {
-      color: "#1a73e8", weight: 5, opacity: 0.9
-    }).addTo(map);
+    routeLine = L.polyline(allPts, { color:"#1a73e8", weight:5, opacity:0.9 }).addTo(map);
+    map.fitBounds(routeLine.getBounds(), { padding:[50,50] });
 
-    // 順序號碼 marker（從 ① 起算）
-    routeNumMarkers = list.map((t, i) =>
-      L.marker([Number(t.lat), Number(t.lng)], {
-        icon: L.divIcon({
-          html: `<div style="background:${t.priority?'#e53e3e':'#1a73e8'};color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">${i+1}</div>`,
-          className:"", iconSize:[24,24], iconAnchor:[12,12]
-        }), zIndexOffset:600
-      }).addTo(map)
-    );
-
-    map.fitBounds(routeLine.getBounds(), { padding: [50,50] });
-    btn.style.background = "#1a73e8";
-    btn.style.color = "#fff";
     routeActive = true;
+    closeBtn.textContent = "✕ 關閉路線";
+    closeBtn.disabled = false;
 
   } catch(e) {
     alert("路線規劃失敗：" + e.message);
-    clearRouteLayers();
-  } finally {
-    btn.textContent = "路線";
-    btn.disabled = false;
+    closeBtn.style.display = "none";
   }
 }
 
