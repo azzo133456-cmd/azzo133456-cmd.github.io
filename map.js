@@ -442,8 +442,22 @@ async function doBatchAdd() {
 }
 
 // ─────────────────────────────────────────
-// 自訂地點加入清單
+// 自訂地點 Modal
 // ─────────────────────────────────────────
+function openCustomModal(lat, lng) {
+  if (!["luzhu", "yangmei"].includes(mode)) return alert("請先進入蘆竹或楊梅模式");
+  document.getElementById("customLabel").value = "";
+  document.getElementById("customLat").value   = lat != null ? Number(lat).toFixed(6) : "";
+  document.getElementById("customLng").value   = lng != null ? Number(lng).toFixed(6) : "";
+  document.getElementById("customStatus").textContent = "";
+  document.getElementById("customModal").style.display = "flex";
+}
+
+// 地圖長按（contextmenu 在手機上是長按）→ 自動帶入座標
+map.on("contextmenu", (e) => {
+  openCustomModal(e.latlng.lat, e.latlng.lng);
+});
+
 async function doAddCustom() {
   if (!["luzhu", "yangmei"].includes(mode)) return;
   const status = document.getElementById("customStatus");
