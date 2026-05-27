@@ -281,19 +281,23 @@ document.getElementById("lampInput").addEventListener("keydown", e => {
 // 顯示路燈
 // ─────────────────────────────────────────
 async function showLamp(id) {
-  const res = await fetch(`${API}/lamp/${encodeURIComponent(id)}`);
-  const data = await res.json();
+  try {
+    const res = await fetch(`${API}/lamp/${encodeURIComponent(id)}`);
+    if (!res.ok) { alert("查無此路燈編號"); return; }
+    const data = await res.json();
+    if (data.error) { alert("查無此路燈編號"); return; }
 
-  if (data.error) return alert("查無此路燈編號");
+    const lat = Number(data.lat);
+    const lng = Number(data.lng);
 
-  const lat = Number(data.lat);
-  const lng = Number(data.lng);
-
-  if (currentMarker) map.removeLayer(currentMarker);
-  currentMarker = L.marker([lat, lng]).addTo(map);
-  currentMarker.bindPopup(popupHTML(data));
-  map.setView([lat, lng], 18);
-  setTimeout(() => currentMarker.openPopup(), 300);
+    if (currentMarker) map.removeLayer(currentMarker);
+    currentMarker = L.marker([lat, lng]).addTo(map);
+    currentMarker.bindPopup(popupHTML(data));
+    map.setView([lat, lng], 18);
+    setTimeout(() => currentMarker.openPopup(), 300);
+  } catch {
+    alert("查詢失敗，請稍後再試");
+  }
 }
 
 // ─────────────────────────────────────────
