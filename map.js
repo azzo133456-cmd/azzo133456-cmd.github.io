@@ -308,6 +308,15 @@ async function removeFav(id) {
   await loadAndRenderTasks(mode);
 }
 
+async function clearAllTasks() {
+  if (!["luzhu", "yangmei"].includes(mode)) return;
+  const count = taskCache[mode]?.length || 0;
+  if (!count) return;
+  if (!confirm(`確定清空全部 ${count} 筆任務？`)) return;
+  await fetch(`${API}/tasks/${mode}`, { method: "DELETE" });
+  await loadAndRenderTasks(mode);
+}
+
 
 // ─────────────────────────────────────────
 // 定位 + 最近路燈
