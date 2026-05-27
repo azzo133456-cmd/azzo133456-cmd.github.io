@@ -219,19 +219,37 @@ async function addFromInput() {
   btn.disabled = true;
 
   try {
-    const res    = await fetch(`${API}/tasks/${mode}/custom`, {
+    // 先嘗試當路燈編號加入
+    const r1     = await fetch(`${API}/tasks/${mode}`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ ids: [text] })
+    });
+    const res1 = await r1.json();
+
+    if (res1.added > 0) {
+      // 成功加入路燈
+      input.value = "";
+      await loadAndRenderTasks(mode);
+      toggleTaskPanel();
+      return;
+    }
+
+    // 找不到路燈編號 → 當地址定位
+    btn.textContent = "…";
+    const r2     = await fetch(`${API}/tasks/${mode}/custom`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ label: text })
     });
-    const result = await res.json();
+    const res2 = await r2.json();
 
-    if (result.ok) {
+    if (res2.ok) {
       input.value = "";
       await loadAndRenderTasks(mode);
-      toggleTaskPanel(); // 開啟清單面板讓使用者看到新增結果
+      toggleTaskPanel();
     } else {
-      alert(`❌ ${result.error}`);
+      alert(`❌ ${res2.error}`);
     }
   } catch (e) {
     alert(`❌ ${e.message}`);
