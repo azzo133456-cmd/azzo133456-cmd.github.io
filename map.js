@@ -235,22 +235,31 @@ async function addFromInput() {
       return;
     }
 
-    // 找不到路燈編號 → 當地址定位
+    // 找不到路燈編號 → 地址定位預覽
     btn.textContent = "…";
-    const r2     = await fetch(`${API}/tasks/${mode}/custom`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ label: text })
-    });
-    const res2 = await r2.json();
+    const r2   = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`);
+    const geo  = await r2.json();
 
-    if (res2.ok) {
-      input.value = "";
-      await loadAndRenderTasks(mode);
-      toggleTaskPanel();
-    } else {
-      alert(`❌ ${res2.error}`);
-    }
+    if (!r2.ok) { alert(`❌ ${geo.error}`); return; }
+
+    // 在地圖上顯示預覽 marker
+    if (currentMarker) map.removeLayer(currentMarker);
+    currentMarker = L.marker([Number(geo.lat), Number(geo.lng)]).addTo(map);
+    map.setView([Number(geo.lat), Number(geo.lng)], 17);
+
+    const pendingText = text;
+    const pendingGeo  = geo;
+    currentMarker.bindPopup(`
+      <div style="text-align:center;min-width:140px">
+        <div style="font-weight:600;margin-bottom:8px">${pendingText}</div>
+        <button onclick="confirmAddCustom('${pendingText.replace(/'/g,"\\'")}',${pendingGeo.lat},${pendingGeo.lng})"
+          style="padding:6px 14px;background:#2F4F7F;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:6px">加入清單</button>
+        <button onclick="cancelPreview()"
+          style="padding:6px 14px;background:#eee;border:none;border-radius:6px;cursor:pointer">取消</button>
+      </div>
+    `).openPopup();
+
+    input.value = "";
   } catch (e) {
     alert(`❌ ${e.message}`);
   } finally {
@@ -260,7 +269,12 @@ async function addFromInput() {
 }
 
 document.getElementById("lampInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") searchLamp();
+  if (e.key !== "Enter") return;
+  if (["luzhu", "yangmei"].includes(mode)) {
+    addFromInput();
+  } else {
+    searchLamp();
+  }
 });
 
 // ─────────────────────────────────────────
@@ -306,6 +320,26 @@ async function removeFav(id) {
   if (!["luzhu", "yangmei"].includes(mode)) return;
   await fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
   await loadAndRenderTasks(mode);
+}
+
+function cancelPreview() {
+  if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
+}
+
+async function confirmAddCustom(label, lat, lng) {
+  const res    = await fetch(`${API}/tasks/${mode}/custom`, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ label, lat: String(lat), lng: String(lng) })
+  });
+  const result = await res.json();
+  if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
+  if (result.ok) {
+    await loadAndRenderTasks(mode);
+    toggleTaskPanel();
+  } else {
+    alert(`❌ ${result.error}`);
+  }
 }
 
 async function clearAllTasks() {
