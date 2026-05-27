@@ -399,6 +399,22 @@ function clearRouteLayers() {
   routeNumMarkers = [];
 }
 
+// Google encoded polyline 解碼
+function decodePolyline(encoded) {
+  const pts = [];
+  let i = 0, lat = 0, lng = 0;
+  while (i < encoded.length) {
+    let b, shift = 0, result = 0;
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : result >> 1;
+    shift = 0; result = 0;
+    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : result >> 1;
+    pts.push([lat / 1e5, lng / 1e5]);
+  }
+  return pts;
+}
+
 async function toggleRoute() {
   if (!["luzhu", "yangmei"].includes(mode)) return;
 
@@ -410,22 +426,17 @@ async function toggleRoute() {
     return;
   }
 
+  // 需要先定位
+  if (!locationLatLng) {
+    alert("請先按 📍 取得你的位置，再規劃路線");
+    return;
+  }
+
   const sel = routeSelected[mode];
   const allList = (taskCache[mode] || []).filter(t => t.lat && t.lng);
   const list = sel.size > 0 ? allList.filter(t => sel.has(t.id)) : allList;
 
-  if (list.length < 2) { alert("請在清單中勾選至少 2 個任務點"); return; }
-
-  // 加順序號碼 marker
-  routeNumMarkers = list.map((t, i) =>
-    L.marker([Number(t.lat), Number(t.lng)], {
-      icon: L.divIcon({
-        html: `<div style="background:${t.priority ? '#e53e3e' : '#1a73e8'};color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">${i+1}</div>`,
-        className: "", iconSize: [24,24], iconAnchor: [12,12]
-      }),
-      zIndexOffset: 600
-    }).addTo(map)
-  );
+  if (list.length < 1) { alert("請在清單中勾選至少 1 個任務點"); return; }
 
   const btn = document.getElementById("routeBtn");
   btn.textContent = "規劃中…";
@@ -433,35 +444,48 @@ async function toggleRoute() {
   closeTaskPanel();
 
   try {
-    // OSRM 公開路由 API（免費，台灣路網完整）
-    // 格式：lng,lat;lng,lat;...
-    const coords = list.map(t =>
-      `${Number(t.lng).toFixed(6)},${Number(t.lat).toFixed(6)}`
-    ).join(";");
+    const origin      = `${locationLatLng[0]},${locationLatLng[1]}`;
+    const destination = `${Number(list[list.length-1].lat)},${Number(list[list.length-1].lng)}`;
+    const midPoints   = list.slice(0, -1).map(t => `${Number(t.lat)},${Number(t.lng)}`);
 
-    const res  = await fetch(
-      `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
-    );
+    const params = new URLSearchParams({ origin, destination });
+    if (midPoints.length) params.set("waypoints", midPoints.join("|"));
+
+    const res  = await fetch(`${API}/directions?${params}`);
     const data = await res.json();
 
-    if (data.code !== "Ok" || !data.routes?.[0]) {
-      alert("路線規劃失敗，請確認點位在可行駛的道路附近");
+    if (data.status !== "OK" || !data.routes?.[0]) {
+      alert(`路線規劃失敗：${data.status || "未知錯誤"}`);
       clearRouteLayers();
       return;
     }
 
-    // 畫路線（GeoJSON geometry，藍色實線）
-    routeLine = L.geoJSON(data.routes[0].geometry, {
-      style: { color: "#1a73e8", weight: 5, opacity: 0.85 }
+    // 合併所有 leg 的 polyline
+    const allPts = data.routes[0].legs.flatMap(leg =>
+      leg.steps.flatMap(step => decodePolyline(step.polyline.points))
+    );
+
+    routeLine = L.polyline(allPts, {
+      color: "#1a73e8", weight: 5, opacity: 0.9
     }).addTo(map);
 
-    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+    // 順序號碼 marker（從 ① 起算）
+    routeNumMarkers = list.map((t, i) =>
+      L.marker([Number(t.lat), Number(t.lng)], {
+        icon: L.divIcon({
+          html: `<div style="background:${t.priority?'#e53e3e':'#1a73e8'};color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">${i+1}</div>`,
+          className:"", iconSize:[24,24], iconAnchor:[12,12]
+        }), zIndexOffset:600
+      }).addTo(map)
+    );
 
+    map.fitBounds(routeLine.getBounds(), { padding: [50,50] });
     btn.style.background = "#1a73e8";
     btn.style.color = "#fff";
     routeActive = true;
-  } catch (e) {
-    alert("無法連線至路由服務，請稍後再試");
+
+  } catch(e) {
+    alert("路線規劃失敗：" + e.message);
     clearRouteLayers();
   } finally {
     btn.textContent = "路線";
