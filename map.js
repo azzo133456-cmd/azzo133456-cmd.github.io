@@ -237,10 +237,17 @@ async function addFromInput() {
 
     // 找不到路燈編號 → 地址定位預覽
     btn.textContent = "…";
-    const r2   = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`);
-    const geo  = await r2.json();
+    let geo;
+    try {
+      const r2 = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`);
+      if (!r2.ok) { alert("地址定位失敗，請確認地址是否正確"); return; }
+      geo = await r2.json();
+    } catch {
+      alert("地址定位失敗，請稍後再試");
+      return;
+    }
 
-    if (!r2.ok) { alert(`❌ ${geo.error}`); return; }
+    if (!geo?.lat) { alert("找不到此地址"); return; }
 
     // 在地圖上顯示預覽 marker
     if (currentMarker) map.removeLayer(currentMarker);
@@ -269,12 +276,7 @@ async function addFromInput() {
 }
 
 document.getElementById("lampInput").addEventListener("keydown", e => {
-  if (e.key !== "Enter") return;
-  if (["luzhu", "yangmei"].includes(mode)) {
-    addFromInput();
-  } else {
-    searchLamp();
-  }
+  if (e.key === "Enter") searchLamp();
 });
 
 // ─────────────────────────────────────────
