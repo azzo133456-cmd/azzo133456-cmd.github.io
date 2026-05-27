@@ -399,7 +399,7 @@ function clearRouteLayers() {
   routeNumMarkers = [];
 }
 
-function toggleRoute() {
+async function toggleRoute() {
   if (!["luzhu", "yangmei"].includes(mode)) return;
 
   if (routeActive) {
@@ -412,39 +412,61 @@ function toggleRoute() {
 
   const sel = routeSelected[mode];
   const allList = (taskCache[mode] || []).filter(t => t.lat && t.lng);
-  // 有勾選就用勾選的，否則用全部
-  const list = sel.size > 0
-    ? allList.filter(t => sel.has(t.id))
-    : allList;
+  const list = sel.size > 0 ? allList.filter(t => sel.has(t.id)) : allList;
 
   if (list.length < 2) { alert("請在清單中勾選至少 2 個任務點"); return; }
 
-  // 畫虛線（優先任務已置頂，順序即為建議路線順序）
-  const points = list.map(t => [Number(t.lat), Number(t.lng)]);
-  routeLine = L.polyline(points, {
-    color: "#2F4F7F",
-    weight: 3,
-    opacity: 0.75,
-    dashArray: "10, 7"
-  }).addTo(map);
-
-  // 在各點加順序號碼
+  // 加順序號碼 marker
   routeNumMarkers = list.map((t, i) =>
     L.marker([Number(t.lat), Number(t.lng)], {
       icon: L.divIcon({
-        html: `<div style="background:${t.priority ? '#e53e3e' : '#2F4F7F'};color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">${i+1}</div>`,
-        className: "", iconSize: [22,22], iconAnchor: [11,11]
+        html: `<div style="background:${t.priority ? '#e53e3e' : '#1a73e8'};color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)">${i+1}</div>`,
+        className: "", iconSize: [24,24], iconAnchor: [12,12]
       }),
-      zIndexOffset: 500
+      zIndexOffset: 600
     }).addTo(map)
   );
 
-  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+  const btn = document.getElementById("routeBtn");
+  btn.textContent = "規劃中…";
+  btn.disabled = true;
   closeTaskPanel();
 
-  document.getElementById("routeBtn").style.background = "#2F4F7F";
-  document.getElementById("routeBtn").style.color = "#fff";
-  routeActive = true;
+  try {
+    // OSRM 公開路由 API（免費，台灣路網完整）
+    // 格式：lng,lat;lng,lat;...
+    const coords = list.map(t =>
+      `${Number(t.lng).toFixed(6)},${Number(t.lat).toFixed(6)}`
+    ).join(";");
+
+    const res  = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`
+    );
+    const data = await res.json();
+
+    if (data.code !== "Ok" || !data.routes?.[0]) {
+      alert("路線規劃失敗，請確認點位在可行駛的道路附近");
+      clearRouteLayers();
+      return;
+    }
+
+    // 畫路線（GeoJSON geometry，藍色實線）
+    routeLine = L.geoJSON(data.routes[0].geometry, {
+      style: { color: "#1a73e8", weight: 5, opacity: 0.85 }
+    }).addTo(map);
+
+    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+
+    btn.style.background = "#1a73e8";
+    btn.style.color = "#fff";
+    routeActive = true;
+  } catch (e) {
+    alert("無法連線至路由服務，請稍後再試");
+    clearRouteLayers();
+  } finally {
+    btn.textContent = "路線";
+    btn.disabled = false;
+  }
 }
 
 async function togglePriority(id) {
