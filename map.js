@@ -121,24 +121,29 @@ function renderTaskList(area) {
     const addr    = (!t.is_custom && t.address) ? t.address : "";
     const meta    = [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
     const icon    = t.is_custom ? "📍" : "💡";
+    const priCls  = t.priority ? " priority" : "";
+    const priBtnCls = t.priority ? " active" : "";
+    const idSafe  = t.id.replace(/'/g, "\\'");
     return `
-      <div class="task-card" onclick="goToTask('${t.id}')">
+      <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
         <span class="task-card-icon">${icon}</span>
         <div class="task-card-body">
           <div class="task-card-id">${name}</div>
           ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
           ${meta ? `<div class="task-card-meta">${meta}</div>` : ""}
         </div>
-        <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${t.id}')">×</button>
+        <button class="task-pri-btn${priBtnCls}" onclick="event.stopPropagation();togglePriority('${idSafe}')" title="優先">🚩</button>
+        <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${idSafe}')">×</button>
       </div>`;
   }).join("");
 
-  // 重繪 markers
+  // 重繪 markers（優先 → 紅色）
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = list
     .filter(t => t.lat && t.lng)
     .map(t => {
-      const m = L.marker([Number(t.lat), Number(t.lng)]).addTo(map);
+      const icon = t.priority ? getPriorityIcon() : new L.Icon.Default();
+      const m = L.marker([Number(t.lat), Number(t.lng)], { icon }).addTo(map);
       m.bindPopup(popupHTML(t, true));
       return m;
     });
@@ -362,6 +367,18 @@ async function removeFav(id) {
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+async function togglePriority(id) {
+  if (!["luzhu", "yangmei"].includes(mode)) return;
+  const task = taskCache[mode]?.find(t => t.id === id);
+  if (!task) return;
+  // 樂觀更新
+  task.priority = task.priority ? 0 : 1;
+  taskCache[mode].sort((a, b) => (b.priority || 0) - (a.priority || 0) || 0);
+  renderTaskList(mode);
+  // 同步後端
+  fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}/priority`, { method: "PATCH" });
+}
+
 function cancelPreview() {
   if (currentMarker) { map.removeLayer(currentMarker); currentMarker = null; }
 }
@@ -583,6 +600,21 @@ let locationMarker = null;
 let locationCircle = null;
 let locationHeading = 0;
 let locationLatLng = null;
+
+// 優先任務 — 紅色 drop-pin 圖示
+function getPriorityIcon() {
+  return L.divIcon({
+    html: `<svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 22 12.5 41 12.5 41S25 22 25 12.5C25 5.6 19.4 0 12.5 0z"
+            fill="#e53e3e" stroke="#b91c1c" stroke-width="1"/>
+      <circle cx="12.5" cy="12.5" r="4.5" fill="white"/>
+    </svg>`,
+    className: "",
+    iconSize:   [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor:[1, -34]
+  });
+}
 
 // 產生方向 SVG 圖示
 function makeLocationIcon(heading) {
