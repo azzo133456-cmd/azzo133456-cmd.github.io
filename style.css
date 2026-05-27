@@ -287,6 +287,29 @@ html, body {
   background: #fff8f8;
 }
 
+/* 勾選卡片 */
+.task-card.selected {
+  background: #eef3fb;
+  border-color: #2F4F7F;
+}
+
+/* 勾選圓圈按鈕 */
+.task-sel-btn {
+  flex-shrink: 0;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 2px solid #ccd5e8;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.task-sel-btn.active {
+  background: #2F4F7F;
+  border-color: #2F4F7F;
+  box-shadow: inset 0 0 0 3px #fff;
+}
+
 /* 旗子（優先）按鈕 */
 .task-pri-btn {
   flex-shrink: 0;

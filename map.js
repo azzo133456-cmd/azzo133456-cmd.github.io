@@ -77,6 +77,12 @@ function switchMode(newMode) {
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
 
+  // 清除路線預覽
+  clearRouteLayers();
+  routeActive = false;
+  const routeBtn = document.getElementById("routeBtn");
+  if (routeBtn) { routeBtn.style.background = ""; routeBtn.style.color = ""; }
+
   closeTaskPanel();
 
   if (mode === "fullhome") return;
@@ -116,6 +122,8 @@ function renderTaskList(area) {
     return;
   }
 
+  const selectedIds = routeSelected[mode] || new Set();
+
   cards.innerHTML = list.map(t => {
     const name    = t.is_custom ? (t.address || t.id) : t.id;
     const addr    = (!t.is_custom && t.address) ? t.address : "";
@@ -123,9 +131,12 @@ function renderTaskList(area) {
     const icon    = t.is_custom ? "📍" : "💡";
     const priCls  = t.priority ? " priority" : "";
     const priBtnCls = t.priority ? " active" : "";
+    const isSel   = selectedIds.has(t.id);
+    const selCls  = isSel ? " selected" : "";
     const idSafe  = t.id.replace(/'/g, "\\'");
     return `
-      <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
+      <div class="task-card${priCls}${selCls}" onclick="goToTask('${idSafe}')">
+        <button class="task-sel-btn${isSel ? ' active' : ''}" onclick="event.stopPropagation();toggleSelect('${idSafe}')"></button>
         <span class="task-card-icon">${icon}</span>
         <div class="task-card-body">
           <div class="task-card-id">${name}</div>
@@ -365,6 +376,75 @@ async function removeFav(id) {
   renderTaskList(mode);
   // 背景同步伺服器
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// ─────────────────────────────────────────
+// 路線預覽
+// ─────────────────────────────────────────
+let routeLine       = null;
+let routeActive     = false;
+let routeNumMarkers = [];
+let routeSelected   = { luzhu: new Set(), yangmei: new Set() };
+
+function toggleSelect(id) {
+  if (!["luzhu", "yangmei"].includes(mode)) return;
+  const sel = routeSelected[mode];
+  if (sel.has(id)) sel.delete(id); else sel.add(id);
+  renderTaskList(mode);
+}
+
+function clearRouteLayers() {
+  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+  routeNumMarkers.forEach(m => map.removeLayer(m));
+  routeNumMarkers = [];
+}
+
+function toggleRoute() {
+  if (!["luzhu", "yangmei"].includes(mode)) return;
+
+  if (routeActive) {
+    clearRouteLayers();
+    document.getElementById("routeBtn").style.background = "";
+    document.getElementById("routeBtn").style.color = "";
+    routeActive = false;
+    return;
+  }
+
+  const sel = routeSelected[mode];
+  const allList = (taskCache[mode] || []).filter(t => t.lat && t.lng);
+  // 有勾選就用勾選的，否則用全部
+  const list = sel.size > 0
+    ? allList.filter(t => sel.has(t.id))
+    : allList;
+
+  if (list.length < 2) { alert("請在清單中勾選至少 2 個任務點"); return; }
+
+  // 畫虛線（優先任務已置頂，順序即為建議路線順序）
+  const points = list.map(t => [Number(t.lat), Number(t.lng)]);
+  routeLine = L.polyline(points, {
+    color: "#2F4F7F",
+    weight: 3,
+    opacity: 0.75,
+    dashArray: "10, 7"
+  }).addTo(map);
+
+  // 在各點加順序號碼
+  routeNumMarkers = list.map((t, i) =>
+    L.marker([Number(t.lat), Number(t.lng)], {
+      icon: L.divIcon({
+        html: `<div style="background:${t.priority ? '#e53e3e' : '#2F4F7F'};color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3)">${i+1}</div>`,
+        className: "", iconSize: [22,22], iconAnchor: [11,11]
+      }),
+      zIndexOffset: 500
+    }).addTo(map)
+  );
+
+  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+  closeTaskPanel();
+
+  document.getElementById("routeBtn").style.background = "#2F4F7F";
+  document.getElementById("routeBtn").style.color = "#fff";
+  routeActive = true;
 }
 
 async function togglePriority(id) {

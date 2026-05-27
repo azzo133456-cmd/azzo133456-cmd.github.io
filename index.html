@@ -48,6 +48,7 @@
     <div class="panel-header">
       <span class="panel-title">任務清單</span>
       <div class="panel-actions">
+        <button class="panel-action-btn" id="routeBtn" onclick="toggleRoute()">路線</button>
         <button class="panel-action-btn" onclick="openCustomModal()">自訂＋</button>
         <button class="panel-action-btn" onclick="document.getElementById('batchModal').style.display='flex'">批次＋</button>
         <button class="panel-action-btn" onclick="clearAllTasks()" style="background:#fee;color:#c00;">清空</button>
@@ -158,7 +159,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=8"></script>
+  <script src="map.js?v=11"></script>
 
 </body>
 </html>
