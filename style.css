@@ -99,22 +99,35 @@ html, body {
   color: #fff;
 }
 
-/* 清單按鈕 */
+/* 浮動任務清單按鈕 */
 #taskListBtn {
   display: none;
-  background: #EFF3FB;
-  color: #2F4F7F;
-  position: relative;
+  position: fixed;
+  bottom: 72px;
+  right: 14px;
+  z-index: 7990;
+  background: #2F4F7F;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 11px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 3px 14px rgba(47,79,127,0.40);
+  cursor: pointer;
+  white-space: nowrap;
 }
+
+#taskListBtn:active { opacity: 0.82; }
 
 #taskCount {
   display: inline-block;
-  background: #2F4F7F;
-  color: #fff;
+  background: #fff;
+  color: #2F4F7F;
   border-radius: 10px;
-  font-size: 11px;
-  padding: 1px 6px;
-  margin-left: 4px;
+  font-size: 12px;
+  padding: 1px 7px;
+  margin-left: 5px;
   font-weight: bold;
 }
 

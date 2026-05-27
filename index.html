@@ -26,10 +26,12 @@
     <input id="lampInput" type="text" placeholder="路燈編號 / 地址">
     <button id="searchBtn" onclick="searchLamp()">查詢</button>
     <button id="addLocationBtn" onclick="addFromInput()" style="display:none;padding:8px 12px;border:none;border-radius:20px;background:#EFF3FB;color:#2F4F7F;font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0;">＋</button>
-    <button id="taskListBtn" onclick="toggleTaskPanel()">
-      清單 <span id="taskCount">0</span>
-    </button>
   </div>
+
+  <!-- 浮動任務清單按鈕 -->
+  <button id="taskListBtn" onclick="toggleTaskPanel()">
+    清單 <span id="taskCount">0</span>
+  </button>
 
   <!-- 地圖 -->
   <div id="mapContainer">
@@ -135,7 +137,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=3"></script>
+  <script src="map.js?v=4"></script>
 
 </body>
 </html>

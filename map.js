@@ -70,7 +70,7 @@ function switchMode(newMode) {
   const isRegion = mode === "luzhu" || mode === "yangmei";
 
   document.getElementById("fullHome").style.display       = mode === "fullhome" ? "flex" : "none";
-  document.getElementById("taskListBtn").style.display    = isRegion ? "inline-block" : "none";
+  document.getElementById("taskListBtn").style.display    = isRegion ? "block" : "none";
   document.getElementById("addLocationBtn").style.display = isRegion ? "inline-block" : "none";
   document.getElementById("backBtn").style.display        = mode !== "fullhome" ? "inline-block" : "none";
 
@@ -200,12 +200,43 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
 // ─────────────────────────────────────────
 // 搜尋
 // ─────────────────────────────────────────
-function searchLamp() {
+async function searchLamp() {
   const input = document.getElementById("lampInput");
-  const id = input.value.trim();
-  if (!id) return alert("請輸入路燈編號");
-  showLamp(id);
-  input.value = "";
+  const text  = input.value.trim();
+  if (!text) return;
+
+  // 先嘗試路燈編號
+  try {
+    const res = await fetch(`${API}/lamp/${encodeURIComponent(text)}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (!data.error) {
+        input.value = "";
+        const lat = Number(data.lat), lng = Number(data.lng);
+        if (currentMarker) map.removeLayer(currentMarker);
+        currentMarker = L.marker([lat, lng]).addTo(map);
+        currentMarker.bindPopup(popupHTML(data));
+        map.setView([lat, lng], 18);
+        setTimeout(() => currentMarker.openPopup(), 300);
+        return;
+      }
+    }
+  } catch {}
+
+  // 找不到路燈 → 嘗試地址定位
+  try {
+    const r2 = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`);
+    if (!r2.ok) { alert("查無此路燈編號，地址定位也失敗"); return; }
+    const geo = await r2.json();
+    input.value = "";
+    if (currentMarker) map.removeLayer(currentMarker);
+    currentMarker = L.marker([Number(geo.lat), Number(geo.lng)]).addTo(map)
+      .bindPopup(`<b>${text}</b>`);
+    map.setView([Number(geo.lat), Number(geo.lng)], 17);
+    setTimeout(() => currentMarker.openPopup(), 300);
+  } catch {
+    alert("查無此路燈編號");
+  }
 }
 
 // ＋ 按鈕：把輸入框的文字加入任務清單（地址自動定位）
