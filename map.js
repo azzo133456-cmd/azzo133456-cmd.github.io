@@ -446,37 +446,86 @@ async function doImport() {
 
 let locationMarker = null;
 let locationCircle = null;
+let locationHeading = 0;
+let locationLatLng = null;
 
-function locateUser() {
+// 產生方向 SVG 圖示
+function makeLocationIcon(heading) {
+  const svg = `
+    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <g transform="rotate(${heading}, 20, 20)">
+        <polygon points="20,4 26,20 20,17 14,20" fill="#4285F4" opacity="0.85"/>
+      </g>
+      <circle cx="20" cy="20" r="7" fill="#4285F4" stroke="white" stroke-width="2"/>
+    </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: "",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+}
+
+function updateLocationMarker() {
+  if (!locationLatLng) return;
+  if (locationMarker) locationMarker.setIcon(makeLocationIcon(locationHeading));
+}
+
+async function locateUser() {
   if (!navigator.geolocation) return alert("此瀏覽器不支援定位功能");
 
-  navigator.geolocation.getCurrentPosition(({ coords }) => {
-    const { latitude: lat, longitude: lng, accuracy } = coords;
+  // iOS 13+ 羅盤權限
+  if (typeof DeviceOrientationEvent?.requestPermission === "function") {
+    try {
+      const perm = await DeviceOrientationEvent.requestPermission();
+      if (perm !== "granted") alert("未取得方向感測器權限，方向功能無法使用");
+    } catch {}
+  }
 
-    // 移除舊的定位圖層
-    if (locationMarker) map.removeLayer(locationMarker);
+  // 監聽方向（iOS 用 webkitCompassHeading，Android 用 alpha absolute）
+  window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+  window.addEventListener("deviceorientation", handleOrientation, true);
+
+  navigator.geolocation.watchPosition(({ coords }) => {
+    const { latitude: lat, longitude: lng, accuracy, heading } = coords;
+    locationLatLng = [lat, lng];
+
+    // GPS heading（有時比羅盤準，移動中）
+    if (heading != null && !isNaN(heading)) locationHeading = heading;
+
     if (locationCircle) map.removeLayer(locationCircle);
-
-    // 藍色精確度範圍圓
     locationCircle = L.circle([lat, lng], {
-      radius: accuracy,
+      radius: Math.min(accuracy, 200),
       color: "#4285F4",
       fillColor: "#4285F4",
-      fillOpacity: 0.1,
+      fillOpacity: 0.08,
       weight: 1
     }).addTo(map);
 
-    // 藍色定位點
-    locationMarker = L.circleMarker([lat, lng], {
-      radius: 8,
-      color: "#fff",
-      weight: 2,
-      fillColor: "#4285F4",
-      fillOpacity: 1
-    }).addTo(map).bindPopup("你在這裡");
+    if (!locationMarker) {
+      locationMarker = L.marker([lat, lng], { icon: makeLocationIcon(locationHeading), zIndexOffset: 1000 })
+        .addTo(map)
+        .bindPopup("你在這裡");
+      map.setView([lat, lng], 18);
+    } else {
+      locationMarker.setLatLng([lat, lng]);
+      updateLocationMarker();
+    }
 
-    map.setView([lat, lng], 18);
-    setTimeout(() => locationMarker.openPopup(), 300);
+  }, () => alert("無法取得定位資訊"), { enableHighAccuracy: true, maximumAge: 3000 });
+}
 
-  }, () => alert("無法取得定位資訊"), { enableHighAccuracy: true });
+function handleOrientation(e) {
+  let heading = null;
+  if (e.webkitCompassHeading != null) {
+    heading = e.webkitCompassHeading; // iOS
+  } else if (e.absolute && e.alpha != null) {
+    heading = 360 - e.alpha;          // Android absolute
+  } else if (e.alpha != null) {
+    heading = 360 - e.alpha;          // fallback
+  }
+  if (heading != null) {
+    locationHeading = heading;
+    updateLocationMarker();
+  }
 }
