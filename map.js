@@ -318,8 +318,11 @@ async function addFav(id) {
 
 async function removeFav(id) {
   if (!["luzhu", "yangmei"].includes(mode)) return;
-  await fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
-  await loadAndRenderTasks(mode);
+  // 先從本地快取移除，立即更新畫面
+  taskCache[mode] = (taskCache[mode] || []).filter(t => t.id !== id);
+  renderTaskList(mode);
+  // 背景同步伺服器
+  fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 function cancelPreview() {
