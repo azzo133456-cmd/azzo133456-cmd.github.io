@@ -444,30 +444,39 @@ async function doImport() {
   }
 }
 
+let locationMarker = null;
+let locationCircle = null;
+
 function locateUser() {
   if (!navigator.geolocation) return alert("此瀏覽器不支援定位功能");
 
-  navigator.geolocation.getCurrentPosition(async ({ coords }) => {
-    const { latitude: lat, longitude: lng } = coords;
+  navigator.geolocation.getCurrentPosition(({ coords }) => {
+    const { latitude: lat, longitude: lng, accuracy } = coords;
 
-    if (currentMarker) map.removeLayer(currentMarker);
-    currentMarker = L.marker([lat, lng], {
-      icon: L.icon({
-        iconUrl: "https://maps.gstatic.com/mapfiles/ms2/micons/blue-dot.png",
-        iconSize: [32, 32]
-      })
+    // 移除舊的定位圖層
+    if (locationMarker) map.removeLayer(locationMarker);
+    if (locationCircle) map.removeLayer(locationCircle);
+
+    // 藍色精確度範圍圓
+    locationCircle = L.circle([lat, lng], {
+      radius: accuracy,
+      color: "#4285F4",
+      fillColor: "#4285F4",
+      fillOpacity: 0.1,
+      weight: 1
+    }).addTo(map);
+
+    // 藍色定位點
+    locationMarker = L.circleMarker([lat, lng], {
+      radius: 8,
+      color: "#fff",
+      weight: 2,
+      fillColor: "#4285F4",
+      fillOpacity: 1
     }).addTo(map).bindPopup("你在這裡");
 
     map.setView([lat, lng], 18);
-    setTimeout(() => currentMarker.openPopup(), 300);
+    setTimeout(() => locationMarker.openPopup(), 300);
 
-    const res = await fetch(`${API}/nearest?lat=${lat}&lng=${lng}`);
-    const nearest = await res.json();
-
-    if (nearest?.id) {
-      const dist = Math.round(nearest.distance * 1000);
-      alert(`最近的路燈${dist <= 50 ? "" : "超過 50 公尺，"}距離你約 ${dist} 公尺`);
-      showLamp(nearest.id);
-    }
-  }, () => alert("無法取得定位資訊"));
+  }, () => alert("無法取得定位資訊"), { enableHighAccuracy: true });
 }
