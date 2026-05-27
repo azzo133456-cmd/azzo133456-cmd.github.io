@@ -442,14 +442,102 @@ async function doBatchAdd() {
 }
 
 // ─────────────────────────────────────────
+// TWD97 TM2 (EPSG:3826) → WGS84（前端版本）
+// ─────────────────────────────────────────
+function twd97ToWgs84(x, y) {
+  const a=6378137,f=1/298.257222101,b=a*(1-f),e2=1-(b/a)**2,k0=0.9999,x0=250000,lon0=121*Math.PI/180;
+  const xp=x-x0,M=y/k0;
+  const mu=M/(a*(1-e2/4-3*e2**2/64-5*e2**3/256));
+  const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+  const phi1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1**2/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu)+(1097*e1**4/512)*Math.sin(8*mu);
+  const sp=Math.sin(phi1),cp=Math.cos(phi1),tp=Math.tan(phi1);
+  const N1=a/Math.sqrt(1-e2*sp**2),T1=tp**2,C1=e2*cp**2/(1-e2),R1=a*(1-e2)/(1-e2*sp**2)**1.5,D=xp/(N1*k0);
+  const lat=phi1-(N1*tp/R1)*(D**2/2-(5+3*T1+10*C1-4*C1**2-9*e2)*D**4/24+(61+90*T1+298*C1+45*T1**2-252*e2-3*C1**2)*D**6/720);
+  const lon=lon0+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1**2+8*e2+24*T1**2)*D**5/120)/cp;
+  return { lat: lat*180/Math.PI, lng: lon*180/Math.PI };
+}
+
+// ─────────────────────────────────────────
+// 台電圖號 → WGS84
+// 格式：B0940CC25（9碼）或 Q0445DD4116（11碼）
+// 先解碼成 TWD67 TM2，再 Molodensky → WGS84
+// ─────────────────────────────────────────
+const TAI_GRID = {
+  'A':[170000,2750000],'B':[250000,2750000],'C':[330000,2750000],
+  'D':[170000,2700000],'E':[250000,2700000],'F':[330000,2700000],
+  'G':[170000,2650000],'H':[250000,2650000],'J':[90000,2600000],
+  'K':[170000,2600000],'L':[250000,2600000],'M':[90000,2550000],
+  'N':[170000,2550000],'O':[250000,2550000],'P':[90000,2500000],
+  'Q':[170000,2500000],'R':[250000,2500000],'T':[170000,2450000],
+  'U':[250000,2450000],'V':[170000,2400000],'W':[250000,2400000],
+  'X':[275000,2614000],'Y':[275000,2564000]
+};
+
+function taipowerToWgs84(code) {
+  code = code.trim().toUpperCase();
+  const base = TAI_GRID[code[0]];
+  if (!base) throw new Error("無效的台電圖號首字母：" + code[0]);
+  if (code.length < 9) throw new Error("台電圖號長度不足（需至少9碼）");
+
+  const t2x = parseInt(code.slice(1,3)) * 800;
+  const t2y = parseInt(code.slice(3,5)) * 500;
+  const t3x = (code.charCodeAt(5) - 65) * 100;
+  const t3y = (code.charCodeAt(6) - 65) * 100;
+  const t99x = code.length >= 11 ? (parseInt(code[9]) || 0) : 0;
+  const t99y = code.length >= 11 ? (parseInt(code[10]) || 0) : 0;
+  const t5x  = parseInt(code[7]) * 10 + t99x;
+  const t5y  = parseInt(code[8]) * 10 + t99y;
+
+  const tx = base[0] + t2x + t3x + t5x;
+  const ty = base[1] + t2y + t3y + t5y;
+
+  // TWD67 TM2 → TWD67 geodetic（Australian National Spheroid）
+  const a=6378160.0, f=1/298.25, b=a*(1-f), e2=1-(b/a)**2;
+  const k0=0.9999, x0=250000, lon0=121*Math.PI/180;
+  const xp=tx-x0, M=ty/k0;
+  const mu=M/(a*(1-e2/4-3*e2**2/64-5*e2**3/256));
+  const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+  const phi1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1**2/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu)+(1097*e1**4/512)*Math.sin(8*mu);
+  const sp=Math.sin(phi1),cp=Math.cos(phi1),tp=Math.tan(phi1);
+  const N1=a/Math.sqrt(1-e2*sp**2),T1=tp**2,C1=e2*cp**2/(1-e2),R1=a*(1-e2)/(1-e2*sp**2)**1.5,D=xp/(N1*k0);
+  const lat67=phi1-(N1*tp/R1)*(D**2/2-(5+3*T1+10*C1-4*C1**2-9*e2)*D**4/24+(61+90*T1+298*C1+45*T1**2-252*e2-3*C1**2)*D**6/720);
+  const lon67=lon0+(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1**2+8*e2+24*T1**2)*D**5/120)/cp;
+
+  // Molodensky：TWD67 → WGS84（towgs84=-752,-358,-179）
+  const dX=-752, dY=-358, dZ=-179;
+  const a2=6378137.0, f2=1/298.257223563, da=a2-a, df=f2-f;
+  const sLa=Math.sin(lat67),cLa=Math.cos(lat67),sLo=Math.sin(lon67),cLo=Math.cos(lon67);
+  const Nm=a/Math.sqrt(1-e2*sLa**2), Mm=a*(1-e2)/Math.pow(1-e2*sLa**2,1.5);
+  const dLat=(-dX*sLa*cLo - dY*sLa*sLo + dZ*cLa + (a*df+f*da)*Math.sin(2*lat67))/Mm;
+  const dLon=(-dX*sLo + dY*cLo)/(Nm*cLa);
+
+  return { lat:(lat67+dLat)*180/Math.PI, lng:(lon67+dLon)*180/Math.PI };
+}
+
+// ─────────────────────────────────────────
 // 自訂地點 Modal
 // ─────────────────────────────────────────
+let _coordTab = "wgs";
+
+function switchCoordTab(tab) {
+  _coordTab = tab;
+  document.getElementById("coordWGS").style.display  = tab === "wgs" ? "block" : "none";
+  document.getElementById("coordTAI").style.display  = tab === "tai" ? "block" : "none";
+  document.getElementById("coordTabWGS").style.background = tab === "wgs" ? "#2F4F7F" : "#f0f0f0";
+  document.getElementById("coordTabWGS").style.color      = tab === "wgs" ? "#fff"    : "#555";
+  document.getElementById("coordTabTAI").style.background = tab === "tai" ? "#2F4F7F" : "#f0f0f0";
+  document.getElementById("coordTabTAI").style.color      = tab === "tai" ? "#fff"    : "#555";
+}
+
 function openCustomModal(lat, lng) {
   if (!["luzhu", "yangmei"].includes(mode)) return alert("請先進入蘆竹或楊梅模式");
-  document.getElementById("customLabel").value = "";
-  document.getElementById("customLat").value   = lat != null ? Number(lat).toFixed(6) : "";
-  document.getElementById("customLng").value   = lng != null ? Number(lng).toFixed(6) : "";
+  document.getElementById("customLabel").value   = "";
+  document.getElementById("customLat").value     = lat != null ? Number(lat).toFixed(6) : "";
+  document.getElementById("customLng").value     = lng != null ? Number(lng).toFixed(6) : "";
+  document.getElementById("customTaiCode").value = "";
   document.getElementById("customStatus").textContent = "";
+  // 有座標時預設停在經緯度頁
+  switchCoordTab(lat != null ? "wgs" : "wgs");
   document.getElementById("customModal").style.display = "flex";
 }
 
@@ -462,11 +550,25 @@ async function doAddCustom() {
   if (!["luzhu", "yangmei"].includes(mode)) return;
   const status = document.getElementById("customStatus");
   const label  = document.getElementById("customLabel").value.trim();
-  const lat    = document.getElementById("customLat").value.trim();
-  const lng    = document.getElementById("customLng").value.trim();
+  if (!label) { status.textContent = "請輸入名稱"; return; }
 
-  if (!label) { status.textContent = "請輸入名稱或地址"; return; }
-  if (!lat || !lng) status.textContent = "定位中…";
+  let lat = "", lng = "";
+
+  if (_coordTab === "tai") {
+    // 台電圖號 → WGS84
+    const code = document.getElementById("customTaiCode").value.trim();
+    if (!code) { status.textContent = "請輸入台電圖號"; return; }
+    try {
+      const wgs = taipowerToWgs84(code);
+      lat = String(wgs.lat.toFixed(6));
+      lng = String(wgs.lng.toFixed(6));
+      status.textContent = `轉換完成：${lat}, ${lng}`;
+    } catch (e) { status.textContent = "❌ " + e.message; return; }
+  } else {
+    lat = document.getElementById("customLat").value.trim();
+    lng = document.getElementById("customLng").value.trim();
+    if (!lat || !lng) status.textContent = "定位中…";
+  }
 
   const res    = await fetch(`${API}/tasks/${mode}/custom`, {
     method: "POST",
