@@ -358,21 +358,21 @@ html, body {
 
 /* 任務清單 marker 標籤 */
 .task-label {
-  background: #2F4F7F !important;
-  color: #fff !important;
+  background: rgba(255,255,255,0.82) !important;
+  color: #111 !important;
   border: none !important;
-  border-radius: 5px !important;
-  padding: 2px 7px !important;
+  border-radius: 3px !important;
+  padding: 1px 5px !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   white-space: nowrap !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.25) !important;
+  box-shadow: none !important;
 }
 
 .task-label::before { display: none !important; }
 
 .task-label-priority {
-  background: #e53e3e !important;
+  color: #e53e3e !important;
 }
 
 /* 遮罩（面板開啟時點外部關閉） */
