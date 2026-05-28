@@ -235,7 +235,9 @@ function toggleTaskPanel() {
 }
 
 function closeTaskPanel() {
-  document.getElementById("taskPanel").classList.remove("open");
+  const panel = document.getElementById("taskPanel");
+  panel.style.height = "";          // 清掉拖曳設的 inline height
+  panel.classList.remove("open");
 }
 
 // ─────────────────────────────────────────
