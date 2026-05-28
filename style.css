@@ -366,6 +366,33 @@ html, body {
 
 .task-del-btn:active { background: #fcc; }
 
+/* 顏色點選器 */
+.color-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: transform 0.12s, border-color 0.12s;
+}
+
+.color-dot.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.35);
+  transform: scale(1.2);
+}
+
+.color-dot:active { transform: scale(0.9); }
+
 .task-empty {
   text-align: center;
   color: #aaa;

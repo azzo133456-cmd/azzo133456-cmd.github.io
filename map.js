@@ -127,6 +127,12 @@ function renderTaskList(area) {
     const priCls  = t.priority ? " priority" : "";
     const priBtnCls = t.priority ? " active" : "";
     const idSafe  = t.id.replace(/'/g, "\\'");
+    const curColor = t.color || "#2F4F7F";
+    const colorDots = TASK_COLORS.map(c =>
+      `<span class="color-dot${c.hex === curColor ? " active" : ""}"
+        style="background:${c.hex}"
+        onclick="event.stopPropagation();setTaskColor('${idSafe}','${c.hex}')"></span>`
+    ).join("");
     return `
       <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
         <span class="task-card-icon">${icon}</span>
@@ -134,6 +140,7 @@ function renderTaskList(area) {
           <div class="task-card-id">${name}</div>
           ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
           ${meta ? `<div class="task-card-meta">${meta}</div>` : ""}
+          <div class="color-dots">${colorDots}</div>
         </div>
         <button class="task-pri-btn${priBtnCls}" onclick="event.stopPropagation();togglePriority('${idSafe}')" title="優先">🚩</button>
         <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${idSafe}')">×</button>
@@ -145,7 +152,8 @@ function renderTaskList(area) {
   favMarkers = list
     .filter(t => t.lat && t.lng)
     .map(t => {
-      const icon  = t.priority ? getPriorityIcon() : new L.Icon.Default();
+      const markerColor = t.color || (t.priority ? "#e53e3e" : "#2F4F7F");
+      const icon  = getColorIcon(markerColor);
       const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
       const m = L.marker([Number(t.lat), Number(t.lng)], { icon }).addTo(map);
       m.bindPopup(popupHTML(t, true));
@@ -454,6 +462,21 @@ async function routeToPoint(lat, lng) {
     alert("路線規劃失敗：" + e.message);
     closeBtn.style.display = "none";
   }
+}
+
+function setTaskColor(id, hex) {
+  if (!["luzhu", "yangmei"].includes(mode)) return;
+  const task = taskCache[mode]?.find(t => t.id === id);
+  if (!task) return;
+  // 再點同色 → 重置預設
+  const newColor = task.color === hex ? null : hex;
+  task.color = newColor;
+  renderTaskList(mode);
+  fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}/color`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ color: newColor })
+  });
 }
 
 async function togglePriority(id) {
@@ -816,12 +839,26 @@ let locationWatchId = null;          // 避免重複 watchPosition
 let orientationAdded = false;        // 避免重複加 orientation listener
 let lastOrientationTime = 0;         // 節流：最多 5 fps
 
-// 優先任務 — 紅色 drop-pin 圖示
-function getPriorityIcon() {
+// 任務 marker 色盤
+const TASK_COLORS = [
+  { hex: "#2F4F7F", border: "#1a3a5c" },  // 預設藍
+  { hex: "#e53e3e", border: "#b91c1c" },  // 紅
+  { hex: "#38a169", border: "#276749" },  // 綠
+  { hex: "#dd6b20", border: "#9c4a00" },  // 橙
+  { hex: "#805ad5", border: "#553c9a" },  // 紫
+  { hex: "#d53f8c", border: "#97266d" },  // 粉
+  { hex: "#319795", border: "#1d6b69" },  // 青
+];
+
+// 產生任意顏色的 drop-pin 圖示
+function getColorIcon(hex) {
+  const col   = TASK_COLORS.find(c => c.hex === hex);
+  const fill  = hex || "#2F4F7F";
+  const stroke = col ? col.border : "#1a3a5c";
   return L.divIcon({
     html: `<svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
       <path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 22 12.5 41 12.5 41S25 22 25 12.5C25 5.6 19.4 0 12.5 0z"
-            fill="#e53e3e" stroke="#b91c1c" stroke-width="1"/>
+            fill="${fill}" stroke="${stroke}" stroke-width="1"/>
       <circle cx="12.5" cy="12.5" r="4.5" fill="white"/>
     </svg>`,
     className: "",
@@ -830,6 +867,9 @@ function getPriorityIcon() {
     popupAnchor:[1, -34]
   });
 }
+
+// 優先任務 — 紅色（保留相容）
+function getPriorityIcon() { return getColorIcon("#e53e3e"); }
 
 // 產生方向 SVG 圖示
 function makeLocationIcon(heading) {
