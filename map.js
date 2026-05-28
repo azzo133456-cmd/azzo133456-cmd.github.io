@@ -20,7 +20,7 @@ let taskCache = { luzhu: [], yangmei: [] }; // 本地快取
 // ─────────────────────────────────────────
 // 地圖初始化
 // ─────────────────────────────────────────
-const map = L.map("map", { zoomControl: false }).setView([25.033, 121.565], 12);
+const map = L.map("map", { zoomControl: false, rotate: true, touchRotate: true }).setView([25.033, 121.565], 12);
 window.map = map;
 
 L.control.zoom({ position: "bottomleft" }).addTo(map);
@@ -630,6 +630,13 @@ function openCustomModal(lat, lng) {
   document.getElementById("customModal").style.display = "flex";
 }
 
+// 指南針圖示跟著地圖旋轉
+map.on("rotate", () => {
+  const bearing = map.getBearing();
+  const btn = document.getElementById("northBtn");
+  if (btn) btn.style.transform = `rotate(${-bearing}deg)`;
+});
+
 // 地圖長按（contextmenu 在手機上是長按）→ 自動帶入座標
 map.on("contextmenu", (e) => {
   openCustomModal(e.latlng.lat, e.latlng.lng);
@@ -844,6 +851,11 @@ function makeLocationIcon(heading) {
 function updateLocationMarker() {
   if (!locationLatLng) return;
   if (locationMarker) locationMarker.setIcon(makeLocationIcon(locationHeading));
+}
+
+function resetNorth() {
+  map.setBearing(0);
+  document.getElementById("northBtn").style.transform = "rotate(0deg)";
 }
 
 async function locateUser() {
