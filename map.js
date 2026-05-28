@@ -45,56 +45,35 @@ function initPanelDrag() {
   const panel  = document.getElementById("taskPanel");
   if (!handle || !panel) return;
 
-  const H_NORMAL   = () => window.innerHeight * 0.45;
-  const H_EXPANDED = () => window.innerHeight * 0.78;
-  const CLOSE_THRESH = 80;   // px：低於此高度關閉
+  const MAX_H      = () => window.innerHeight * 0.92;
+  const CLOSE_THRESH = 60;   // px：低於此高度自動關閉
 
   let dragging = false;
-  let startY = 0, lastY = 0, startH = 0;
-  let lastTime = 0, velocity = 0;
+  let startY = 0, startH = 0;
 
-  // 從把手開始
   handle.addEventListener("touchstart", e => {
     dragging = true;
-    startY = lastY = e.touches[0].clientY;
+    startY = e.touches[0].clientY;
     startH = panel.offsetHeight;
-    lastTime = Date.now();
-    velocity = 0;
     panel.classList.add("dragging");
   }, { passive: true });
 
-  // 用 document 追蹤（手指滑出把手也不中斷）
   document.addEventListener("touchmove", e => {
     if (!dragging) return;
-    const y   = e.touches[0].clientY;
-    const now = Date.now();
-    const dt  = now - lastTime || 1;
-    velocity  = (y - lastY) / dt;   // 正 = 往下（關閉方向）
-    lastY     = y;
-    lastTime  = now;
-    const dy  = startY - y;         // 正 = 往上拉（展開方向）
-    panel.style.height = Math.max(0, Math.min(H_EXPANDED(), startH + dy)) + "px";
+    const dy = startY - e.touches[0].clientY;   // 正 = 往上拉
+    panel.style.height = Math.max(0, Math.min(MAX_H(), startH + dy)) + "px";
   }, { passive: true });
 
   document.addEventListener("touchend", () => {
     if (!dragging) return;
     dragging = false;
-    panel.classList.remove("dragging");   // 重啟 transition，讓 snap 有動畫
+    panel.classList.remove("dragging");
 
-    const h = panel.offsetHeight;
-
-    if (velocity > 0.4 || h < CLOSE_THRESH) {
-      // 快速往下甩 or 拖到很低 → 關閉
+    if (panel.offsetHeight < CLOSE_THRESH) {
       panel.style.height = "";
       panel.classList.remove("open");
-    } else if (velocity < -0.3 || h > H_NORMAL() + 80) {
-      // 快速往上甩 or 拖到高處 → 展開 78vh
-      panel.style.height = H_EXPANDED() + "px";
-    } else {
-      // 其他 → 回到 45vh
-      panel.style.height = "";
-      panel.classList.add("open");
     }
+    // 其他：停在當前高度（不做任何 snap）
   }, { passive: true });
 }
 
