@@ -123,19 +123,21 @@ function renderTaskList(area) {
     const name    = t.is_custom ? (t.address || t.id) : t.id;
     const addr    = (!t.is_custom && t.address) ? t.address : "";
     const meta    = [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
-    const icon    = t.is_custom ? "📍" : "💡";
     const priCls  = t.priority ? " priority" : "";
     const priBtnCls = t.priority ? " active" : "";
     const idSafe  = t.id.replace(/'/g, "\\'");
-    const curColor = t.color || "#2F4F7F";
+    // 卡片左側迷你 marker 顏色：有設色→用設色；否則優先→紅；否則→藍
+    const cardColor = t.color || (t.priority ? "#e53e3e" : "#2F4F7F");
+    // 顏色點選器：選中的那顆有白圈外框；第一顆（預設藍）沒設色時視為選中
+    const activeDot = t.color || "#2F4F7F";
     const colorDots = TASK_COLORS.map(c =>
-      `<span class="color-dot${c.hex === curColor ? " active" : ""}"
+      `<span class="color-dot${c.hex === activeDot ? " active" : ""}"
         style="background:${c.hex}"
         onclick="event.stopPropagation();setTaskColor('${idSafe}','${c.hex}')"></span>`
     ).join("");
     return `
       <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
-        <span class="task-card-icon">${icon}</span>
+        <span class="task-card-icon">${cardMarkerSvg(cardColor)}</span>
         <div class="task-card-body">
           <div class="task-card-id">${name}</div>
           ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
@@ -152,8 +154,10 @@ function renderTaskList(area) {
   favMarkers = list
     .filter(t => t.lat && t.lng)
     .map(t => {
-      const markerColor = t.color || (t.priority ? "#e53e3e" : "#2F4F7F");
-      const icon  = getColorIcon(markerColor);
+      // 有設色 → 彩色 SVG；無色+優先 → 紅 SVG；無色+普通 → Leaflet 預設藍
+      const icon = t.color
+        ? getColorIcon(t.color)
+        : t.priority ? getPriorityIcon() : new L.Icon.Default();
       const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
       const m = L.marker([Number(t.lat), Number(t.lng)], { icon }).addTo(map);
       m.bindPopup(popupHTML(t, true));
@@ -850,10 +854,10 @@ const TASK_COLORS = [
   { hex: "#319795", border: "#1d6b69" },  // 青
 ];
 
-// 產生任意顏色的 drop-pin 圖示
+// 產生任意顏色的 drop-pin 圖示（與 L.Icon.Default 錨點一致）
 function getColorIcon(hex) {
-  const col   = TASK_COLORS.find(c => c.hex === hex);
-  const fill  = hex || "#2F4F7F";
+  const col    = TASK_COLORS.find(c => c.hex === hex);
+  const fill   = hex || "#2F4F7F";
   const stroke = col ? col.border : "#1a3a5c";
   return L.divIcon({
     html: `<svg width="25" height="41" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
@@ -861,15 +865,28 @@ function getColorIcon(hex) {
             fill="${fill}" stroke="${stroke}" stroke-width="1"/>
       <circle cx="12.5" cy="12.5" r="4.5" fill="white"/>
     </svg>`,
-    className: "",
-    iconSize:   [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor:[1, -34]
+    className:    "",
+    iconSize:     [25, 41],
+    iconAnchor:   [12, 41],
+    popupAnchor:  [1, -34],
+    tooltipAnchor:[16, -28]   // 與 L.Icon.Default 相同，標籤位置一致
   });
 }
 
 // 優先任務 — 紅色（保留相容）
 function getPriorityIcon() { return getColorIcon("#e53e3e"); }
+
+// 任務卡片迷你 marker 圖示（跟著顏色走）
+function cardMarkerSvg(hex) {
+  const col    = TASK_COLORS.find(c => c.hex === hex);
+  const fill   = hex || "#2F4F7F";
+  const stroke = col ? col.border : "#1a3a5c";
+  return `<svg width="18" height="28" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg" style="display:block">
+    <path d="M12.5 0C5.6 0 0 5.6 0 12.5C0 22 12.5 41 12.5 41S25 22 25 12.5C25 5.6 19.4 0 12.5 0z"
+          fill="${fill}" stroke="${stroke}" stroke-width="1"/>
+    <circle cx="12.5" cy="12.5" r="4.5" fill="white"/>
+  </svg>`;
+}
 
 // 產生方向 SVG 圖示
 function makeLocationIcon(heading) {
