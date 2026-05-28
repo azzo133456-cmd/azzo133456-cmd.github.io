@@ -182,20 +182,17 @@ function goToTask(id) {
 }
 
 function toggleTaskPanel() {
-  const panel   = document.getElementById("taskPanel");
-  const overlay = document.getElementById("taskOverlay");
-  const isOpen  = panel.classList.contains("open");
+  const panel  = document.getElementById("taskPanel");
+  const isOpen = panel.classList.contains("open");
   if (isOpen) {
     closeTaskPanel();
   } else {
     panel.classList.add("open");
-    overlay.style.display = "block";
   }
 }
 
 function closeTaskPanel() {
   document.getElementById("taskPanel").classList.remove("open");
-  document.getElementById("taskOverlay").style.display = "none";
 }
 
 // ─────────────────────────────────────────
