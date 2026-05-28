@@ -194,7 +194,7 @@ html, body {
 }
 
 #taskPanel.open {
-  height: 55vh;
+  height: 45vh;
 }
 
 /* 拖曳中停用動畫 */
@@ -202,17 +202,16 @@ html, body {
   transition: none !important;
 }
 
-/* 面板把手（加大觸控區） */
+/* 面板把手（加高觸控區） */
 .panel-handle {
   width: 100%;
-  padding: 12px 0 4px;
+  height: 20px;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   cursor: grab;
 }
-
 .panel-handle::after {
   content: '';
   display: block;
@@ -389,28 +388,34 @@ html, body {
   border: none !important;
 }
 
-/* 顏色點選器 */
-.color-dots {
+/* 卡片右側區塊（顏色格 + 旗幟 + 刪除） */
+.card-right {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* 顏色 2×2 格子 */
+.color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
 }
 
 .color-dot {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   cursor: pointer;
-  border: 3px solid transparent;
+  border: 2.5px solid transparent;
   box-sizing: border-box;
-  flex-shrink: 0;
   transition: transform 0.12s, border-color 0.12s;
 }
 
 .color-dot.active {
   border-color: #fff;
-  box-shadow: 0 0 0 2.5px rgba(0,0,0,0.4);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.4);
   transform: scale(1.15);
 }
 

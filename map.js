@@ -38,50 +38,63 @@ window.addEventListener("load", () => {
 });
 
 // ─────────────────────────────────────────
-// 任務面板拖曳（上拉 / 下拉關閉）
+// 任務面板拖曳（改良版）
 // ─────────────────────────────────────────
 function initPanelDrag() {
   const handle = document.getElementById("panelHandle");
   const panel  = document.getElementById("taskPanel");
   if (!handle || !panel) return;
 
-  const SNAP_NORMAL   = () => Math.round(window.innerHeight * 0.55); // 55vh
-  const SNAP_EXPANDED = () => Math.round(window.innerHeight * 0.80); // 80vh
-  const CLOSE_THRESH  = 80;   // px：低於此高度直接關閉
+  const H_NORMAL   = () => window.innerHeight * 0.45;
+  const H_EXPANDED = () => window.innerHeight * 0.78;
+  const CLOSE_THRESH = 80;   // px：低於此高度關閉
 
-  let startY = null;
-  let startH = 0;
+  let dragging = false;
+  let startY = 0, lastY = 0, startH = 0;
+  let lastTime = 0, velocity = 0;
 
+  // 從把手開始
   handle.addEventListener("touchstart", e => {
-    startY = e.touches[0].clientY;
+    dragging = true;
+    startY = lastY = e.touches[0].clientY;
     startH = panel.offsetHeight;
+    lastTime = Date.now();
+    velocity = 0;
     panel.classList.add("dragging");
   }, { passive: true });
 
-  handle.addEventListener("touchmove", e => {
-    if (startY === null) return;
-    const dy   = startY - e.touches[0].clientY;
-    const newH = Math.max(0, Math.min(SNAP_EXPANDED(), startH + dy));
-    panel.style.height = newH + "px";
+  // 用 document 追蹤（手指滑出把手也不中斷）
+  document.addEventListener("touchmove", e => {
+    if (!dragging) return;
+    const y   = e.touches[0].clientY;
+    const now = Date.now();
+    const dt  = now - lastTime || 1;
+    velocity  = (y - lastY) / dt;   // 正 = 往下（關閉方向）
+    lastY     = y;
+    lastTime  = now;
+    const dy  = startY - y;         // 正 = 往上拉（展開方向）
+    panel.style.height = Math.max(0, Math.min(H_EXPANDED(), startH + dy)) + "px";
   }, { passive: true });
 
-  handle.addEventListener("touchend", () => {
-    if (startY === null) return;
-    panel.classList.remove("dragging");
-    const h = panel.offsetHeight;
-    panel.style.height = "";  // 還給 CSS 控制
+  document.addEventListener("touchend", () => {
+    if (!dragging) return;
+    dragging = false;
+    panel.classList.remove("dragging");   // 重啟 transition，讓 snap 有動畫
 
-    if (h < CLOSE_THRESH) {
-      // 關閉
+    const h = panel.offsetHeight;
+
+    if (velocity > 0.4 || h < CLOSE_THRESH) {
+      // 快速往下甩 or 拖到很低 → 關閉
+      panel.style.height = "";
       panel.classList.remove("open");
-    } else if (h > SNAP_NORMAL() + 60) {
-      // 展開到 80vh
-      panel.style.height = SNAP_EXPANDED() + "px";
+    } else if (velocity < -0.3 || h > H_NORMAL() + 80) {
+      // 快速往上甩 or 拖到高處 → 展開 78vh
+      panel.style.height = H_EXPANDED() + "px";
     } else {
-      // 回到標準 55vh
+      // 其他 → 回到 45vh
+      panel.style.height = "";
       panel.classList.add("open");
     }
-    startY = null;
   }, { passive: true });
 }
 
@@ -175,9 +188,9 @@ function renderTaskList(area) {
     const priCls  = t.priority ? " priority" : "";
     const priBtnCls = t.priority ? " active" : "";
     const idSafe  = t.id.replace(/'/g, "\\'");
-    // 顏色點選器：null = 預設藍（選中），其他顏色對比 t.color
-    const colorDots = TASK_COLORS.map(c => {
-      const isActive = (t.color === c.hex);  // null===null → 預設藍選中
+    // 顏色 2×2 格子（旗幟旁邊）
+    const colorGrid = TASK_COLORS.map(c => {
+      const isActive = (t.color === c.hex);
       const arg      = c.hex ? `'${c.hex}'` : "null";
       return `<span class="color-dot${isActive ? " active" : ""}"
         style="background:${c.css}"
@@ -190,10 +203,12 @@ function renderTaskList(area) {
           <div class="task-card-id">${name}</div>
           ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
           ${meta ? `<div class="task-card-meta">${meta}</div>` : ""}
-          <div class="color-dots">${colorDots}</div>
         </div>
-        <button class="task-pri-btn${priBtnCls}" onclick="event.stopPropagation();togglePriority('${idSafe}')" title="優先">🚩</button>
-        <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${idSafe}')">×</button>
+        <div class="card-right">
+          <div class="color-grid">${colorGrid}</div>
+          <button class="task-pri-btn${priBtnCls}" onclick="event.stopPropagation();togglePriority('${idSafe}')" title="優先">🚩</button>
+          <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${idSafe}')">×</button>
+        </div>
       </div>`;
   }).join("");
 
