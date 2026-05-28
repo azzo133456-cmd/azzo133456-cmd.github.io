@@ -356,23 +356,23 @@ html, body {
   padding: 32px 0;
 }
 
-/* 任務清單 marker 標籤（Google Maps 風格）*/
+/* 任務清單 marker 標籤 */
 .task-label {
-  background: rgba(255,255,255,0.82) !important;
-  color: #222 !important;
+  background: #2F4F7F !important;
+  color: #fff !important;
   border: none !important;
-  border-radius: 3px !important;
-  padding: 1px 5px !important;
+  border-radius: 5px !important;
+  padding: 2px 7px !important;
   font-size: 11px !important;
   font-weight: 700 !important;
   white-space: nowrap !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.18) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25) !important;
 }
 
 .task-label::before { display: none !important; }
 
 .task-label-priority {
-  color: #c0392b !important;
+  background: #e53e3e !important;
 }
 
 /* 遮罩（面板開啟時點外部關閉） */
