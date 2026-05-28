@@ -140,14 +140,21 @@ function renderTaskList(area) {
       </div>`;
   }).join("");
 
-  // 重繪 markers（優先 → 紅色）
+  // 重繪 markers（優先 → 紅色，永久顯示名稱標籤）
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = list
     .filter(t => t.lat && t.lng)
     .map(t => {
-      const icon = t.priority ? getPriorityIcon() : new L.Icon.Default();
+      const icon  = t.priority ? getPriorityIcon() : new L.Icon.Default();
+      const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
       const m = L.marker([Number(t.lat), Number(t.lng)], { icon }).addTo(map);
       m.bindPopup(popupHTML(t, true));
+      m.bindTooltip(label, {
+        permanent:  true,
+        direction:  "top",
+        offset:     [0, -36],
+        className:  t.priority ? "task-label task-label-priority" : "task-label"
+      });
       return m;
     });
 }
