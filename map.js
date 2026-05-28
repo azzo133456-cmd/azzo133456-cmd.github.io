@@ -152,7 +152,7 @@ function renderTaskList(area) {
       m.bindTooltip(label, {
         permanent:  true,
         direction:  "top",
-        offset:     [0, -36],
+        offset:     [0, -44],
         className:  t.priority ? "task-label task-label-priority" : "task-label"
       });
       return m;

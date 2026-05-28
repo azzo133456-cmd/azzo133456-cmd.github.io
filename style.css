@@ -361,24 +361,22 @@ html, body {
   background: rgba(47, 79, 127, 0.88) !important;
   color: #fff !important;
   border: none !important;
-  border-radius: 6px !important;
-  padding: 2px 7px !important;
-  font-size: 12px !important;
+  border-radius: 5px !important;
+  padding: 1px 6px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   white-space: nowrap !important;
-  box-shadow: 0 1px 5px rgba(0,0,0,0.3) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25) !important;
+  margin-bottom: 2px !important;
 }
 
-.task-label.leaflet-tooltip-top::before {
-  border-top-color: rgba(47, 79, 127, 0.88) !important;
+/* 移掉箭頭 */
+.task-label::before {
+  display: none !important;
 }
 
 .task-label-priority {
   background: rgba(229, 62, 62, 0.9) !important;
-}
-
-.task-label-priority.leaflet-tooltip-top::before {
-  border-top-color: rgba(229, 62, 62, 0.9) !important;
 }
 
 /* 遮罩（面板開啟時點外部關閉） */
