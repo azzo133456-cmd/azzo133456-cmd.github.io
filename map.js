@@ -801,10 +801,13 @@ async function doImport() {
   }
 }
 
-let locationMarker = null;
-let locationCircle = null;
+let locationMarker  = null;
+let locationCircle  = null;
 let locationHeading = 0;
-let locationLatLng = null;
+let locationLatLng  = null;
+let locationWatchId = null;          // 避免重複 watchPosition
+let orientationAdded = false;        // 避免重複加 orientation listener
+let lastOrientationTime = 0;         // 節流：最多 5 fps
 
 // 優先任務 — 紅色 drop-pin 圖示
 function getPriorityIcon() {
@@ -846,55 +849,71 @@ function updateLocationMarker() {
 async function locateUser() {
   if (!navigator.geolocation) return alert("此瀏覽器不支援定位功能");
 
-  // iOS 13+ 羅盤權限
-  if (typeof DeviceOrientationEvent?.requestPermission === "function") {
+  // iOS 13+ 羅盤權限（只申請一次）
+  if (!orientationAdded && typeof DeviceOrientationEvent?.requestPermission === "function") {
     try {
       const perm = await DeviceOrientationEvent.requestPermission();
       if (perm !== "granted") alert("未取得方向感測器權限，方向功能無法使用");
     } catch {}
   }
 
-  // 監聽方向（iOS 用 webkitCompassHeading，Android 用 alpha absolute）
-  window.addEventListener("deviceorientationabsolute", handleOrientation, true);
-  window.addEventListener("deviceorientation", handleOrientation, true);
+  // 只加一次 orientation listener
+  if (!orientationAdded) {
+    window.addEventListener("deviceorientationabsolute", handleOrientation, true);
+    window.addEventListener("deviceorientation",         handleOrientation, true);
+    orientationAdded = true;
+  }
 
-  navigator.geolocation.watchPosition(({ coords }) => {
+  // 清掉舊的 watchPosition，避免重複
+  if (locationWatchId !== null) {
+    navigator.geolocation.clearWatch(locationWatchId);
+    locationWatchId = null;
+  }
+
+  locationWatchId = navigator.geolocation.watchPosition(({ coords }) => {
     const { latitude: lat, longitude: lng, accuracy, heading } = coords;
     locationLatLng = [lat, lng];
 
-    // GPS heading（有時比羅盤準，移動中）
     if (heading != null && !isNaN(heading)) locationHeading = heading;
 
-    if (locationCircle) map.removeLayer(locationCircle);
-    locationCircle = L.circle([lat, lng], {
-      radius: Math.min(accuracy, 200),
-      color: "#4285F4",
-      fillColor: "#4285F4",
-      fillOpacity: 0.08,
-      weight: 1
-    }).addTo(map);
+    // 直接更新 circle，不刪掉重建
+    if (locationCircle) {
+      locationCircle.setLatLng([lat, lng]);
+      locationCircle.setRadius(Math.min(accuracy, 200));
+    } else {
+      locationCircle = L.circle([lat, lng], {
+        radius: Math.min(accuracy, 200),
+        color: "#4285F4", fillColor: "#4285F4", fillOpacity: 0.08, weight: 1
+      }).addTo(map);
+    }
 
     if (!locationMarker) {
-      locationMarker = L.marker([lat, lng], { icon: makeLocationIcon(locationHeading), zIndexOffset: 1000 })
-        .addTo(map)
-        .bindPopup("你在這裡");
+      locationMarker = L.marker([lat, lng], {
+        icon: makeLocationIcon(locationHeading), zIndexOffset: 1000
+      }).addTo(map).bindPopup("你在這裡");
       map.setView([lat, lng], 18);
     } else {
       locationMarker.setLatLng([lat, lng]);
       updateLocationMarker();
     }
 
-  }, () => alert("無法取得定位資訊"), { enableHighAccuracy: true, maximumAge: 3000 });
+  }, () => alert("無法取得定位資訊"),
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
 }
 
 function handleOrientation(e) {
+  // 節流：最多每 200ms 更新一次（避免每秒幾十次重繪 SVG）
+  const now = Date.now();
+  if (now - lastOrientationTime < 200) return;
+  lastOrientationTime = now;
+
   let heading = null;
   if (e.webkitCompassHeading != null) {
-    heading = e.webkitCompassHeading; // iOS
+    heading = e.webkitCompassHeading;
   } else if (e.absolute && e.alpha != null) {
-    heading = 360 - e.alpha;          // Android absolute
+    heading = 360 - e.alpha;
   } else if (e.alpha != null) {
-    heading = 360 - e.alpha;          // fallback
+    heading = 360 - e.alpha;
   }
   if (heading != null) {
     locationHeading = heading;
