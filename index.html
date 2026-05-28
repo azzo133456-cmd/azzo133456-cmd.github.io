@@ -45,13 +45,14 @@
 
   <!-- 任務清單底部面板 -->
   <div id="taskPanel">
-    <div class="panel-handle"></div>
+    <div class="panel-handle" id="panelHandle"></div>
     <div class="panel-header">
       <span class="panel-title">任務清單</span>
       <div class="panel-actions">
         <button class="panel-action-btn" onclick="openCustomModal()">自訂＋</button>
         <button class="panel-action-btn" onclick="document.getElementById('batchModal').style.display='flex'">批次＋</button>
         <button class="panel-action-btn" onclick="clearAllTasks()" style="background:#fee;color:#c00;">清空</button>
+        <button class="panel-action-btn" onclick="closeTaskPanel()" style="font-size:16px;padding:6px 10px;">↓</button>
       </div>
     </div>
     <div id="taskCards"></div>
@@ -163,7 +164,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=24"></script>
+  <script src="map.js?v=25"></script>
 
 </body>
 </html>

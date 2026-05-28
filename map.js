@@ -34,7 +34,56 @@ window.addEventListener("load", () => {
     map.invalidateSize();
     handleRoute();
   }, 200);
+  initPanelDrag();
 });
+
+// ─────────────────────────────────────────
+// 任務面板拖曳（上拉 / 下拉關閉）
+// ─────────────────────────────────────────
+function initPanelDrag() {
+  const handle = document.getElementById("panelHandle");
+  const panel  = document.getElementById("taskPanel");
+  if (!handle || !panel) return;
+
+  const SNAP_NORMAL   = () => Math.round(window.innerHeight * 0.55); // 55vh
+  const SNAP_EXPANDED = () => Math.round(window.innerHeight * 0.80); // 80vh
+  const CLOSE_THRESH  = 80;   // px：低於此高度直接關閉
+
+  let startY = null;
+  let startH = 0;
+
+  handle.addEventListener("touchstart", e => {
+    startY = e.touches[0].clientY;
+    startH = panel.offsetHeight;
+    panel.classList.add("dragging");
+  }, { passive: true });
+
+  handle.addEventListener("touchmove", e => {
+    if (startY === null) return;
+    const dy   = startY - e.touches[0].clientY;
+    const newH = Math.max(0, Math.min(SNAP_EXPANDED(), startH + dy));
+    panel.style.height = newH + "px";
+  }, { passive: true });
+
+  handle.addEventListener("touchend", () => {
+    if (startY === null) return;
+    panel.classList.remove("dragging");
+    const h = panel.offsetHeight;
+    panel.style.height = "";  // 還給 CSS 控制
+
+    if (h < CLOSE_THRESH) {
+      // 關閉
+      panel.classList.remove("open");
+    } else if (h > SNAP_NORMAL() + 60) {
+      // 展開到 80vh
+      panel.style.height = SNAP_EXPANDED() + "px";
+    } else {
+      // 回到標準 55vh
+      panel.classList.add("open");
+    }
+    startY = null;
+  }, { passive: true });
+}
 
 // BFCache（上一頁回來）時重新同步
 window.addEventListener("pageshow", () => handleRoute());
