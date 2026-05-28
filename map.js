@@ -151,8 +151,8 @@ function renderTaskList(area) {
       m.bindPopup(popupHTML(t, true));
       m.bindTooltip(label, {
         permanent:  true,
-        direction:  "top",
-        offset:     [0, -44],
+        direction:  "right",
+        offset:     [6, -20],
         className:  t.priority ? "task-label task-label-priority" : "task-label"
       });
       return m;
