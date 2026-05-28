@@ -366,20 +366,27 @@ html, body {
 
 .task-del-btn:active { background: #fcc; }
 
+/* 讓彩色 divIcon 不裁切 shadow */
+.leaflet-div-icon-color {
+  overflow: visible !important;
+  background: transparent !important;
+  border: none !important;
+}
+
 /* 顏色點選器 */
 .color-dots {
   display: flex;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 8px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
 .color-dot {
-  width: 16px;
-  height: 16px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 3px solid transparent;
   box-sizing: border-box;
   flex-shrink: 0;
   transition: transform 0.12s, border-color 0.12s;
@@ -387,11 +394,11 @@ html, body {
 
 .color-dot.active {
   border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(0,0,0,0.35);
-  transform: scale(1.2);
+  box-shadow: 0 0 0 2.5px rgba(0,0,0,0.4);
+  transform: scale(1.15);
 }
 
-.color-dot:active { transform: scale(0.9); }
+.color-dot:active { transform: scale(0.88); }
 
 .task-empty {
   text-align: center;
