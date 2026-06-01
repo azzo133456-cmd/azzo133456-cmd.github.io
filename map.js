@@ -152,6 +152,18 @@ async function loadAndRenderTasks(area) {
   }
 }
 
+function buildMarker(t) {
+  const icon  = t.color ? getColorIcon(t.color) : t.priority ? getPriorityIcon() : new L.Icon.Default();
+  const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
+  const m = L.marker([Number(t.lat), Number(t.lng)], { icon });
+  m.bindPopup(popupHTML(t, true));
+  m.bindTooltip(label, {
+    permanent: true, direction: "bottom", offset: [0, 4],
+    className: t.priority ? "task-label task-label-priority" : "task-label"
+  });
+  return m;
+}
+
 function renderTaskList(area) {
   const list    = taskCache[area] || [];
   const cards   = document.getElementById("taskCards");
@@ -202,36 +214,31 @@ function renderTaskList(area) {
       </div>`;
   }).join("");
 
-  // 重繪 markers（用 markerClusterGroup，支援千筆不當機）
+  // 重繪 markers
   if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
   favMarkers = [];
 
-  clusterGroup = L.markerClusterGroup({
-    chunkedLoading: true,
-    maxClusterRadius: 50,
-    disableClusteringAtZoom: 17
-  });
-
-  list
-    .filter(t => t.lat && t.lng)
-    .forEach(t => {
-      const icon = t.color
-        ? getColorIcon(t.color)
-        : t.priority ? getPriorityIcon() : new L.Icon.Default();
-      const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
-      const m = L.marker([Number(t.lat), Number(t.lng)], { icon });
-      m.bindPopup(popupHTML(t, true));
-      m.bindTooltip(label, {
-        permanent:  true,
-        direction:  "bottom",
-        offset:     [0, 4],
-        className:  t.priority ? "task-label task-label-priority" : "task-label"
-      });
+  if (isCtrl) {
+    // 智控器：千筆 → 用 markerClusterGroup
+    clusterGroup = L.markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 50,
+      disableClusteringAtZoom: 17
+    });
+    list.filter(t => t.lat && t.lng).forEach(t => {
+      const m = buildMarker(t);
       clusterGroup.addLayer(m);
       favMarkers.push(m);
     });
-
-  map.addLayer(clusterGroup);
+    map.addLayer(clusterGroup);
+  } else {
+    // 蘆竹/楊梅：直接加到地圖（原本樣式）
+    favMarkers = list.filter(t => t.lat && t.lng).map(t => {
+      const m = buildMarker(t);
+      m.addTo(map);
+      return m;
+    });
+  }
 }
 
 function goToTask(id) {
