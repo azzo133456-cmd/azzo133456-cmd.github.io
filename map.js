@@ -234,16 +234,25 @@ function buildMarker(t) {
   return m;
 }
 
-// 智控器 marker 分批建立，最後一次性加入地圖（避免 1000+ 次重繪）
+// 智控器 marker 分批建立，用 MarkerClusterGroup 聚合（低縮放只渲染幾十個圓，不是 1000+）
 async function addCtrlMarkersChunked(area, list) {
   const renderer = L.canvas({ padding: 0.5 });
   const pts = list.filter(t => t.lat && t.lng);
   const CHUNK = 200;
+
+  const cg = L.markerClusterGroup({
+    chunkedLoading:          true,
+    disableClusteringAtZoom: 17,   // zoom >= 17 顯示個別 marker
+    maxClusterRadius:        60,
+    spiderfyOnMaxZoom:       false,
+    showCoverageOnHover:     false,
+  });
+
   const tempMarkers = [];
 
   for (let i = 0; i < pts.length; i += CHUNK) {
-    if (mode !== area) return;   // 已切換頁面就停止
-    pts.slice(i, i + CHUNK).forEach(t => {
+    if (mode !== area) return;
+    const batch = pts.slice(i, i + CHUNK).map(t => {
       const fillColor = t.color || (t.priority ? "#e53e3e" : "#2A81CB");
       const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
       const m = L.circleMarker([Number(t.lat), Number(t.lng)], {
@@ -253,13 +262,15 @@ async function addCtrlMarkersChunked(area, list) {
       m.bindPopup(popupHTML(t, true));
       m.bindTooltip(label, { permanent: true, direction: "bottom", offset: [0, 4], className: "task-label" });
       tempMarkers.push(m);
+      return m;
     });
-    await new Promise(r => setTimeout(r, 0));  // 讓出執行緒
+    cg.addLayers(batch);
+    await new Promise(r => setTimeout(r, 0));
   }
 
   if (mode !== area) return;
-  // 一次性加入地圖，只觸發一次重繪
-  clusterGroup = L.layerGroup(tempMarkers).addTo(map);
+  clusterGroup = cg;
+  map.addLayer(cg);
   favMarkers = tempMarkers;
   updateCtrlLabelVisibility();
 }
