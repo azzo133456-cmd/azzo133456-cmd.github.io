@@ -233,6 +233,29 @@ function buildMarker(t) {
   return m;
 }
 
+// 智控器 marker 分批建立（每批 80 個，讓出執行緒避免凍結）
+async function addCtrlMarkersChunked(area, list) {
+  const renderer = L.canvas({ padding: 0.5 });
+  const pts = list.filter(t => t.lat && t.lng);
+  const CHUNK = 80;
+
+  for (let i = 0; i < pts.length; i += CHUNK) {
+    if (mode !== area) return;   // 已切換頁面就停止
+    pts.slice(i, i + CHUNK).forEach(t => {
+      const fillColor = t.color || (t.priority ? "#e53e3e" : "#2A81CB");
+      const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
+      const m = L.circleMarker([Number(t.lat), Number(t.lng)], {
+        renderer, radius: 7, fillColor, color: "#fff", weight: 2, fillOpacity: 1
+      });
+      m.bindPopup(popupHTML(t, true));
+      m.bindTooltip(label, { permanent: false, direction: "top", offset: [0, -6] });
+      m.addTo(map);
+      favMarkers.push(m);
+    });
+    await new Promise(r => setTimeout(r, 0));  // 讓出執行緒
+  }
+}
+
 function renderTaskList(area) {
   const list    = taskCache[area] || [];
   const countEl = document.getElementById("taskCount");
@@ -268,18 +291,8 @@ function renderTaskList(area) {
     // ── 地圖：Canvas 渲染，所有點畫在同一個 canvas ──
     if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
     favMarkers.forEach(m => map.removeLayer(m));
-    const renderer = L.canvas({ padding: 0.5 });
-    favMarkers = list.filter(t => t.lat && t.lng).map(t => {
-      const fillColor = t.color || (t.priority ? "#e53e3e" : "#2A81CB");
-      const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
-      const m = L.circleMarker([Number(t.lat), Number(t.lng)], {
-        renderer, radius: 7, fillColor, color: "#fff", weight: 2, fillOpacity: 1
-      });
-      m.bindPopup(popupHTML(t, true));
-      m.bindTooltip(label, { permanent: false, direction: "top", offset: [0, -6] });
-      m.addTo(map);
-      return m;
-    });
+    favMarkers = [];
+    addCtrlMarkersChunked(area, list);  // 非同步分批，不凍結 UI
 
   } else {
     // ── 蘆竹/楊梅：原本全量渲染（筆數少，不需虛擬捲動）──
