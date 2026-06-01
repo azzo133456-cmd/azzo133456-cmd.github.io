@@ -233,11 +233,12 @@ function buildMarker(t) {
   return m;
 }
 
-// 智控器 marker 分批建立（每批 80 個，讓出執行緒避免凍結）
+// 智控器 marker 分批建立，最後一次性加入地圖（避免 1000+ 次重繪）
 async function addCtrlMarkersChunked(area, list) {
   const renderer = L.canvas({ padding: 0.5 });
   const pts = list.filter(t => t.lat && t.lng);
-  const CHUNK = 80;
+  const CHUNK = 200;
+  const tempMarkers = [];
 
   for (let i = 0; i < pts.length; i += CHUNK) {
     if (mode !== area) return;   // 已切換頁面就停止
@@ -247,13 +248,18 @@ async function addCtrlMarkersChunked(area, list) {
       const m = L.circleMarker([Number(t.lat), Number(t.lng)], {
         renderer, radius: 7, fillColor, color: "#fff", weight: 2, fillOpacity: 1
       });
+      m._taskId = t.id;
       m.bindPopup(popupHTML(t, true));
-      m.bindTooltip(label, { permanent: false, direction: "top", offset: [0, -6] });
-      m.addTo(map);
-      favMarkers.push(m);
+      m.bindTooltip(label, { permanent: true, direction: "bottom", offset: [0, 4], className: "task-label" });
+      tempMarkers.push(m);
     });
     await new Promise(r => setTimeout(r, 0));  // 讓出執行緒
   }
+
+  if (mode !== area) return;
+  // 一次性加入地圖，只觸發一次重繪
+  clusterGroup = L.layerGroup(tempMarkers).addTo(map);
+  favMarkers = tempMarkers;
 }
 
 function renderTaskList(area) {
@@ -290,9 +296,8 @@ function renderTaskList(area) {
 
     // ── 地圖：Canvas 渲染，所有點畫在同一個 canvas ──
     if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
-    favMarkers.forEach(m => map.removeLayer(m));
     favMarkers = [];
-    addCtrlMarkersChunked(area, list);  // 非同步分批，不凍結 UI
+    addCtrlMarkersChunked(area, list);  // 非同步分批，最後一次性加入地圖
 
   } else {
     // ── 蘆竹/楊梅：原本全量渲染（筆數少，不需虛擬捲動）──
@@ -315,12 +320,16 @@ function goToTask(id) {
   if (t?.lat && t?.lng) {
     closeTaskPanel();
 
-    // ctrl 和 luzhu/yangmei 都從 favMarkers 找
-    const marker = favMarkers.find(m => {
-      const ll = m.getLatLng();
-      return Math.abs(ll.lat - Number(t.lat)) < 0.00001 &&
-             Math.abs(ll.lng - Number(t.lng)) < 0.00001;
-    });
+    let marker;
+    if (CTRL_MODES.includes(mode)) {
+      marker = favMarkers.find(m => m._taskId === id);
+    } else {
+      marker = favMarkers.find(m => {
+        const ll = m.getLatLng();
+        return Math.abs(ll.lat - Number(t.lat)) < 0.00001 &&
+               Math.abs(ll.lng - Number(t.lng)) < 0.00001;
+      });
+    }
     map.setView([Number(t.lat), Number(t.lng)], 18);
     if (marker) setTimeout(() => marker.openPopup(), 300);
   }
@@ -526,10 +535,19 @@ async function addFav(id) {
 
 async function removeFav(id) {
   if (!TASK_MODES.includes(mode)) return;
-  // 先從本地快取移除，立即更新畫面
   taskCache[mode] = (taskCache[mode] || []).filter(t => t.id !== id);
-  renderTaskList(mode);
-  // 背景同步伺服器
+
+  if (CTRL_MODES.includes(mode)) {
+    // 只移除單一 marker，不全量重繪
+    const marker = favMarkers.find(m => m._taskId === id);
+    if (marker && clusterGroup) clusterGroup.removeLayer(marker);
+    favMarkers = favMarkers.filter(m => m._taskId !== id);
+    document.getElementById("taskCount").textContent = taskCache[mode].length;
+    vsRender(mode);
+  } else {
+    renderTaskList(mode);
+  }
+
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
@@ -612,12 +630,19 @@ async function routeToPoint(lat, lng) {
 }
 
 function setTaskColor(id, hex) {
-  // hex 可以是 null（預設藍）或色碼字串
   if (!TASK_MODES.includes(mode)) return;
   const task = taskCache[mode]?.find(t => t.id === id);
   if (!task) return;
-  task.color = hex;   // null = 預設藍 L.Icon.Default
-  renderTaskList(mode);
+  task.color = hex;
+
+  if (CTRL_MODES.includes(mode)) {
+    const marker = favMarkers.find(m => m._taskId === id);
+    if (marker) marker.setStyle({ fillColor: hex || (task.priority ? "#e53e3e" : "#2A81CB") });
+    vsRender(mode);
+  } else {
+    renderTaskList(mode);
+  }
+
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}/color`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -629,11 +654,17 @@ async function togglePriority(id) {
   if (!TASK_MODES.includes(mode)) return;
   const task = taskCache[mode]?.find(t => t.id === id);
   if (!task) return;
-  // 樂觀更新
   task.priority = task.priority ? 0 : 1;
   taskCache[mode].sort((a, b) => (b.priority || 0) - (a.priority || 0) || 0);
-  renderTaskList(mode);
-  // 同步後端
+
+  if (CTRL_MODES.includes(mode)) {
+    const marker = favMarkers.find(m => m._taskId === id);
+    if (marker) marker.setStyle({ fillColor: task.color || (task.priority ? "#e53e3e" : "#2A81CB") });
+    vsRender(mode);
+  } else {
+    renderTaskList(mode);
+  }
+
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}/priority`, { method: "PATCH" });
 }
 
