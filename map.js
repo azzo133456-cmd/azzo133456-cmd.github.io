@@ -593,7 +593,9 @@ async function doBatchAdd() {
 
   await loadAndRenderTasks(mode);
   if (!result.notFound?.length) {
-    setTimeout(() => document.getElementById("batchModal").style.display = "none", 1000);
+    document.getElementById("batchIds").value = "";
+    document.getElementById("batchStatus").textContent = "";
+    setTimeout(() => document.getElementById("batchModal").style.display = "none", 800);
   }
 }
 
@@ -707,6 +709,14 @@ map.on("rotate", () => {
 // 地圖長按（contextmenu 在手機上是長按）→ 自動帶入座標
 map.on("contextmenu", (e) => {
   openCustomModal(e.latlng.lat, e.latlng.lng);
+});
+
+// 搜尋 marker 的 popup 關閉時自動移除 marker
+map.on("popupclose", (e) => {
+  if (currentMarker && e.popup === currentMarker.getPopup()) {
+    map.removeLayer(currentMarker);
+    currentMarker = null;
+  }
 });
 
 async function doAddCustom() {
