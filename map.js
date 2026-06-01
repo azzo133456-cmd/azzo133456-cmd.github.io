@@ -4,8 +4,11 @@
 const API = "https://api.azzo133456.page";
 
 // Hash ↔ mode 對照表
-const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei" };
-const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM" };
+const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "YC": "ymctrl", "TC": "tyctrl" };
+const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl: "YC", tyctrl: "TC" };
+
+// 有任務清單的模式（共用）
+const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl"];
 
 let mode = "fullhome";
 let currentMarker = null;
@@ -15,7 +18,7 @@ let favMarkers = [];
 // ─────────────────────────────────────────
 // 任務清單（伺服器同步）
 // ─────────────────────────────────────────
-let taskCache = { luzhu: [], yangmei: [] }; // 本地快取
+let taskCache = { luzhu: [], yangmei: [], ymctrl: [], tyctrl: [] }; // 本地快取
 
 // ─────────────────────────────────────────
 // 地圖初始化
@@ -108,7 +111,7 @@ function enterMode(newMode) {
 function switchMode(newMode) {
   mode = newMode;
 
-  const isRegion = mode === "luzhu" || mode === "yangmei";
+  const isRegion = TASK_MODES.includes(mode);
 
   document.getElementById("fullHome").style.display       = mode === "fullhome" ? "flex" : "none";
   document.getElementById("taskListBtn").style.display    = isRegion ? "block" : "none";
@@ -124,10 +127,11 @@ function switchMode(newMode) {
   closeTaskPanel();
 
   if (mode === "fullhome") return;
-  if (mode === "home") { map.setView([25.033, 121.565], 12); return; }
-
-  if (mode === "luzhu")   map.setView([25.012, 121.288], 13);
-  if (mode === "yangmei") map.setView([24.916, 121.135], 13);
+  if (mode === "home")    { map.setView([25.033, 121.565], 12); return; }
+  if (mode === "luzhu")   { map.setView([25.012, 121.288], 13); }
+  if (mode === "yangmei") { map.setView([24.916, 121.135], 13); }
+  if (mode === "ymctrl")  { map.setView([24.916, 121.135], 13); }
+  if (mode === "tyctrl")  { map.setView([24.993, 121.301], 13); }
 
   loadAndRenderTasks(mode);
 }
@@ -406,7 +410,7 @@ async function showLamp(id) {
 // 清單管理
 // ─────────────────────────────────────────
 async function addFav(id) {
-  if (!["luzhu", "yangmei"].includes(mode)) return alert("請先選擇蘆竹或楊梅模式");
+  if (!TASK_MODES.includes(mode)) return alert("請先選擇蘆竹或楊梅模式");
   if (taskCache[mode]?.some(t => t.id === id)) return alert("已在清單中");
   const res = await fetch(`${API}/tasks/${mode}`, {
     method: "POST",
@@ -423,7 +427,7 @@ async function addFav(id) {
 }
 
 async function removeFav(id) {
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+  if (!TASK_MODES.includes(mode)) return;
   // 先從本地快取移除，立即更新畫面
   taskCache[mode] = (taskCache[mode] || []).filter(t => t.id !== id);
   renderTaskList(mode);
@@ -511,7 +515,7 @@ async function routeToPoint(lat, lng) {
 
 function setTaskColor(id, hex) {
   // hex 可以是 null（預設藍）或色碼字串
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+  if (!TASK_MODES.includes(mode)) return;
   const task = taskCache[mode]?.find(t => t.id === id);
   if (!task) return;
   task.color = hex;   // null = 預設藍 L.Icon.Default
@@ -524,7 +528,7 @@ function setTaskColor(id, hex) {
 }
 
 async function togglePriority(id) {
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+  if (!TASK_MODES.includes(mode)) return;
   const task = taskCache[mode]?.find(t => t.id === id);
   if (!task) return;
   // 樂觀更新
@@ -556,7 +560,7 @@ async function confirmAddCustom(label, lat, lng) {
 }
 
 async function clearAllTasks() {
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+  if (!TASK_MODES.includes(mode)) return;
   const count = taskCache[mode]?.length || 0;
   if (!count) return;
   if (!confirm(`確定清空全部 ${count} 筆任務？`)) return;
@@ -572,7 +576,7 @@ async function clearAllTasks() {
 // 批次加入清單
 // ─────────────────────────────────────────
 async function doBatchAdd() {
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+  if (!TASK_MODES.includes(mode)) return;
   const status = document.getElementById("batchStatus");
   const raw    = document.getElementById("batchIds").value.trim();
   if (!raw) { status.textContent = "請輸入路燈編號"; return; }
@@ -688,7 +692,7 @@ function switchCoordTab(tab) {
 }
 
 function openCustomModal(lat, lng) {
-  if (!["luzhu", "yangmei"].includes(mode)) return alert("請先進入蘆竹或楊梅模式");
+  if (!TASK_MODES.includes(mode)) return alert("請先進入蘆竹或楊梅模式");
   document.getElementById("customLabel").value   = "";
   document.getElementById("customLat").value     = lat != null ? Number(lat).toFixed(6) : "";
   document.getElementById("customLng").value     = lng != null ? Number(lng).toFixed(6) : "";
@@ -720,7 +724,7 @@ map.on("popupclose", (e) => {
 });
 
 async function doAddCustom() {
-  if (!["luzhu", "yangmei"].includes(mode)) return;
+  if (!TASK_MODES.includes(mode)) return;
   const status = document.getElementById("customStatus");
   const label  = document.getElementById("customLabel").value.trim();
   if (!label) { status.textContent = "請輸入名稱"; return; }
