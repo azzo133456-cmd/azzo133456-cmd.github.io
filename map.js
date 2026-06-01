@@ -276,8 +276,8 @@ async function addCtrlMarkersChunked(area, list) {
 
   const cg = L.markerClusterGroup({
     chunkedLoading:          true,
-    disableClusteringAtZoom: 17,   // zoom >= 17 顯示個別 marker
-    maxClusterRadius:        60,
+    disableClusteringAtZoom: 15,   // zoom >= 15 就散開成個別路燈點（只在很遠時聚合）
+    maxClusterRadius:        50,
     spiderfyOnMaxZoom:       false,
     showCoverageOnHover:     false,
   });
@@ -897,7 +897,7 @@ function openCustomModal(lat, lng) {
 // ─────────────────────────────────────────
 // 智控器標籤可見性（縮放 >= 16 才顯示，避免 1000+ DOM 標籤拖慢縮放）
 // ─────────────────────────────────────────
-const CTRL_LABEL_MIN_ZOOM = 17;   // 與 disableClusteringAtZoom 一致：展開後才顯示標籤
+const CTRL_LABEL_MIN_ZOOM = 16;   // zoom 15 先顯示乾淨彩色點，16+ 再帶出編號標籤
 
 function updateCtrlLabelVisibility() {
   const mapEl = document.getElementById("map");
