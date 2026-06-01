@@ -135,6 +135,7 @@ function switchMode(newMode) {
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
   updateCtrlLabelVisibility();
+  setRotationEnabled(!CTRL_MODES.includes(mode));   // 智控器關閉旋轉（少一個重繪來源、避免誤觸）
 
   // 清除路線預覽
   closeRoute();
@@ -898,6 +899,23 @@ function openCustomModal(lat, lng) {
 // 智控器標籤可見性（縮放 >= 16 才顯示，避免 1000+ DOM 標籤拖慢縮放）
 // ─────────────────────────────────────────
 const CTRL_LABEL_MIN_ZOOM = 16;   // zoom 15 先顯示乾淨彩色點，16+ 再帶出編號標籤
+
+// 啟用／關閉地圖旋轉（leaflet-rotate 的觸控與 shift 拖曳旋轉）
+function setRotationEnabled(on) {
+  const handlers = [map.touchRotate, map.shiftKeyRotate];
+  for (const h of handlers) {
+    if (!h) continue;
+    on ? h.enable() : h.disable();
+  }
+  if (!on) {
+    map.setBearing(0);   // 關閉時順手回正
+    const btn = document.getElementById("northBtn");
+    if (btn) btn.style.transform = "rotate(0deg)";
+  }
+  // 智控器隱藏指南針按鈕（不能轉就不需要）
+  const northBtn = document.getElementById("northBtn");
+  if (northBtn) northBtn.style.display = on ? "" : "none";
+}
 
 function updateCtrlLabelVisibility() {
   const mapEl = document.getElementById("map");
