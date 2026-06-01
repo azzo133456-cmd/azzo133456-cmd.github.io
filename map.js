@@ -152,6 +152,74 @@ async function loadAndRenderTasks(area) {
   }
 }
 
+// ─────────────────────────────────────────
+// 虛擬捲動（智控器專用）
+// ─────────────────────────────────────────
+const VS_ITEM_H = 72;   // 每張卡片估算高度（px）
+const VS_BUFFER = 4;    // 視窗外多渲染幾張
+
+function vsRender(area) {
+  const el   = document.getElementById("taskCards");
+  const list = taskCache[area] || [];
+  if (!list.length) {
+    el.innerHTML = `<p class="task-empty">清單是空的<br>點「自訂＋」或長按地圖加入地點</p>`;
+    return;
+  }
+
+  const isCtrl = CTRL_MODES.includes(area);
+  const colors = isCtrl
+    ? TASK_COLORS.filter(c => c.hex === null || c.hex === "#38a169")
+    : TASK_COLORS;
+
+  const scrollTop = el.scrollTop;
+  const viewH     = el.clientHeight || 400;
+  const startIdx  = Math.max(0, Math.floor(scrollTop / VS_ITEM_H) - VS_BUFFER);
+  const endIdx    = Math.min(list.length, Math.ceil((scrollTop + viewH) / VS_ITEM_H) + VS_BUFFER);
+
+  if (el._vsStart === startIdx && el._vsEnd === endIdx) return; // 無變化不重繪
+  el._vsStart = startIdx;
+  el._vsEnd   = endIdx;
+
+  const topPad = startIdx * VS_ITEM_H;
+  const botPad = Math.max(0, (list.length - endIdx) * VS_ITEM_H);
+
+  el.innerHTML =
+    `<div style="height:${topPad}px"></div>` +
+    list.slice(startIdx, endIdx).map(t => buildCardHtml(t, area, colors)).join("") +
+    `<div style="height:${botPad}px"></div>`;
+}
+
+function buildCardHtml(t, area, colors) {
+  const name      = t.is_custom ? (t.address || t.id) : t.id;
+  const addr      = (!t.is_custom && t.address) ? t.address : "";
+  const isCtrl    = CTRL_MODES.includes(area);
+  const meta      = isCtrl ? "" :
+    [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
+  const priCls    = t.priority ? " priority" : "";
+  const priBtnCls = t.priority ? " active" : "";
+  const idSafe    = t.id.replace(/'/g, "\\'");
+  const colorGrid = colors.map(c => {
+    const isActive = (t.color === c.hex);
+    const arg      = c.hex ? `'${c.hex}'` : "null";
+    return `<span class="color-dot${isActive ? " active" : ""}" style="background:${c.css}"
+      onclick="event.stopPropagation();setTaskColor('${idSafe}',${arg})"></span>`;
+  }).join("");
+  return `
+    <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
+      <span class="task-card-icon">${cardMarkerHtml(t.color, t.priority)}</span>
+      <div class="task-card-body">
+        <div class="task-card-id">${name}</div>
+        ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
+        ${meta ? `<div class="task-card-meta">${meta}</div>` : ""}
+      </div>
+      <div class="card-right">
+        <div class="color-grid">${colorGrid}</div>
+        <button class="task-pri-btn${priBtnCls}" onclick="event.stopPropagation();togglePriority('${idSafe}')" title="優先">🚩</button>
+        <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${idSafe}')">×</button>
+      </div>
+    </div>`;
+}
+
 function buildMarker(t) {
   const icon  = t.color ? getColorIcon(t.color) : t.priority ? getPriorityIcon() : new L.Icon.Default();
   const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
@@ -166,80 +234,59 @@ function buildMarker(t) {
 
 function renderTaskList(area) {
   const list    = taskCache[area] || [];
-  const cards   = document.getElementById("taskCards");
   const countEl = document.getElementById("taskCount");
+  const cards   = document.getElementById("taskCards");
   const isCtrl  = CTRL_MODES.includes(area);
-  const colors  = isCtrl
-    ? TASK_COLORS.filter(c => c.hex === null || c.hex === "#38a169")  // 只留藍+綠
-    : TASK_COLORS;
 
   countEl.textContent = list.length;
 
   if (!list.length) {
     cards.innerHTML = `<p class="task-empty">清單是空的<br>點「自訂＋」或長按地圖加入地點</p>`;
+    if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
     favMarkers.forEach(m => map.removeLayer(m));
     favMarkers = [];
     return;
   }
 
-  cards.innerHTML = list.map(t => {
-    const name    = t.is_custom ? (t.address || t.id) : t.id;
-    const addr    = (!t.is_custom && t.address) ? t.address : "";
-    // 智控器不顯示 W/K
-    const meta    = isCtrl ? "" :
-      [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
-    const priCls    = t.priority ? " priority" : "";
-    const priBtnCls = t.priority ? " active" : "";
-    const idSafe    = t.id.replace(/'/g, "\\'");
-    const colorGrid = colors.map(c => {
-      const isActive = (t.color === c.hex);
-      const arg      = c.hex ? `'${c.hex}'` : "null";
-      return `<span class="color-dot${isActive ? " active" : ""}"
-        style="background:${c.css}"
-        onclick="event.stopPropagation();setTaskColor('${idSafe}',${arg})"></span>`;
-    }).join("");
-    return `
-      <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
-        <span class="task-card-icon">${cardMarkerHtml(t.color, t.priority)}</span>
-        <div class="task-card-body">
-          <div class="task-card-id">${name}</div>
-          ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
-          ${meta ? `<div class="task-card-meta">${meta}</div>` : ""}
-        </div>
-        <div class="card-right">
-          <div class="color-grid">${colorGrid}</div>
-          <button class="task-pri-btn${priBtnCls}" onclick="event.stopPropagation();togglePriority('${idSafe}')" title="優先">🚩</button>
-          <button class="task-del-btn" onclick="event.stopPropagation();removeFav('${idSafe}')">×</button>
-        </div>
-      </div>`;
-  }).join("");
-
-  // 重繪 markers
-  if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
-  favMarkers = [];
-
   if (isCtrl) {
-    // 智控器：Canvas 渲染，全部畫在同一個 canvas，不產生個別 DOM，千筆不卡
+    // ── 智控器：虛擬捲動（只渲染可見卡片） ──
+    cards._vsArea  = area;
+    cards._vsStart = -1;
+    cards._vsEnd   = -1;
+    cards.scrollTop = 0;
+
+    // 綁定捲動監聽（同一個 element 只綁一次）
+    if (!cards._vsListener) {
+      cards._vsListener = () => {
+        if (CTRL_MODES.includes(mode)) vsRender(cards._vsArea);
+      };
+      cards.addEventListener("scroll", cards._vsListener, { passive: true });
+    }
+    vsRender(area);
+
+    // ── 地圖：Canvas 渲染，所有點畫在同一個 canvas ──
+    if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
+    favMarkers.forEach(m => map.removeLayer(m));
     const renderer = L.canvas({ padding: 0.5 });
     favMarkers = list.filter(t => t.lat && t.lng).map(t => {
       const fillColor = t.color || (t.priority ? "#e53e3e" : "#2A81CB");
+      const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
       const m = L.circleMarker([Number(t.lat), Number(t.lng)], {
-        renderer,
-        radius:       7,
-        fillColor,
-        color:        "#fff",
-        weight:       2,
-        fillOpacity:  1
+        renderer, radius: 7, fillColor, color: "#fff", weight: 2, fillOpacity: 1
       });
       m.bindPopup(popupHTML(t, true));
-      // 標籤改成 hover 顯示（permanent 在千筆下會嚴重拖慢）
-      const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
       m.bindTooltip(label, { permanent: false, direction: "top", offset: [0, -6] });
       m.addTo(map);
       return m;
     });
+
   } else {
-    // 蘆竹/楊梅：原本 PNG marker + 永久標籤
+    // ── 蘆竹/楊梅：原本全量渲染（筆數少，不需虛擬捲動）──
+    const colors = TASK_COLORS;
+    cards.innerHTML = list.map(t => buildCardHtml(t, area, colors)).join("");
+
+    if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
+    favMarkers.forEach(m => map.removeLayer(m));
     favMarkers = list.filter(t => t.lat && t.lng).map(t => {
       const m = buildMarker(t);
       m.addTo(map);
