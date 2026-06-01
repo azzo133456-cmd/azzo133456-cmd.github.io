@@ -121,6 +121,7 @@ function switchMode(newMode) {
   document.getElementById("backBtn").style.display        = mode !== "fullhome" ? "inline-block" : "none";
 
   if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
+  favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
 
   // 清除路線預覽
