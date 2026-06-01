@@ -447,6 +447,9 @@ html, body {
   color: #e53e3e !important;
 }
 
+/* 智控器標籤：縮放不夠近時隱藏，避免 1000+ DOM 標籤拖慢縮放 */
+.ctrl-labels-hidden .task-label { display: none !important; }
+
 /* 遮罩（面板開啟時點外部關閉） */
 #taskOverlay {
   display: none;

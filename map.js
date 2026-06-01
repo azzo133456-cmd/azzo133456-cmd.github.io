@@ -123,6 +123,7 @@ function switchMode(newMode) {
   if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
   favMarkers.forEach(m => map.removeLayer(m));
   favMarkers = [];
+  updateCtrlLabelVisibility();
 
   // 清除路線預覽
   closeRoute();
@@ -260,6 +261,7 @@ async function addCtrlMarkersChunked(area, list) {
   // 一次性加入地圖，只觸發一次重繪
   clusterGroup = L.layerGroup(tempMarkers).addTo(map);
   favMarkers = tempMarkers;
+  updateCtrlLabelVisibility();
 }
 
 function renderTaskList(area) {
@@ -831,6 +833,22 @@ function openCustomModal(lat, lng) {
   switchCoordTab(lat != null ? "wgs" : "wgs");
   document.getElementById("customModal").style.display = "flex";
 }
+
+// ─────────────────────────────────────────
+// 智控器標籤可見性（縮放 >= 16 才顯示，避免 1000+ DOM 標籤拖慢縮放）
+// ─────────────────────────────────────────
+const CTRL_LABEL_MIN_ZOOM = 16;
+
+function updateCtrlLabelVisibility() {
+  const mapEl = document.getElementById("map");
+  if (!CTRL_MODES.includes(mode)) {
+    mapEl.classList.remove("ctrl-labels-hidden");
+    return;
+  }
+  mapEl.classList.toggle("ctrl-labels-hidden", map.getZoom() < CTRL_LABEL_MIN_ZOOM);
+}
+
+map.on("zoomend", updateCtrlLabelVisibility);
 
 // 指南針圖示跟著地圖旋轉
 map.on("rotate", () => {
