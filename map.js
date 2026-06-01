@@ -9,11 +9,13 @@ const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl:
 
 // 有任務清單的模式（共用）
 const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl"];
-
+// 智控器模式（只要藍+綠，不顯示 W/K）
+const CTRL_MODES  = ["ymctrl", "tyctrl"];
 let mode = "fullhome";
 let currentMarker = null;
 let customMarkers = [];
 let favMarkers = [];
+let clusterGroup  = null;   // markercluster 群組
 
 // ─────────────────────────────────────────
 // 任務清單（伺服器同步）
@@ -118,7 +120,7 @@ function switchMode(newMode) {
   document.getElementById("addLocationBtn").style.display = isRegion ? "inline-block" : "none";
   document.getElementById("backBtn").style.display        = mode !== "fullhome" ? "inline-block" : "none";
 
-  favMarkers.forEach(m => map.removeLayer(m));
+  if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
   favMarkers = [];
 
   // 清除路線預覽
@@ -154,11 +156,15 @@ function renderTaskList(area) {
   const list    = taskCache[area] || [];
   const cards   = document.getElementById("taskCards");
   const countEl = document.getElementById("taskCount");
+  const isCtrl  = CTRL_MODES.includes(area);
+  const colors  = isCtrl
+    ? TASK_COLORS.filter(c => c.hex === null || c.hex === "#38a169")  // 只留藍+綠
+    : TASK_COLORS;
 
   countEl.textContent = list.length;
 
   if (!list.length) {
-    cards.innerHTML = `<p class="task-empty">清單是空的<br>搜尋路燈後點「加入清單」</p>`;
+    cards.innerHTML = `<p class="task-empty">清單是空的<br>點「自訂＋」或長按地圖加入地點</p>`;
     favMarkers.forEach(m => map.removeLayer(m));
     favMarkers = [];
     return;
@@ -167,12 +173,13 @@ function renderTaskList(area) {
   cards.innerHTML = list.map(t => {
     const name    = t.is_custom ? (t.address || t.id) : t.id;
     const addr    = (!t.is_custom && t.address) ? t.address : "";
-    const meta    = [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
-    const priCls  = t.priority ? " priority" : "";
+    // 智控器不顯示 W/K
+    const meta    = isCtrl ? "" :
+      [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
+    const priCls    = t.priority ? " priority" : "";
     const priBtnCls = t.priority ? " active" : "";
-    const idSafe  = t.id.replace(/'/g, "\\'");
-    // 顏色 2×2 格子（旗幟旁邊）
-    const colorGrid = TASK_COLORS.map(c => {
+    const idSafe    = t.id.replace(/'/g, "\\'");
+    const colorGrid = colors.map(c => {
       const isActive = (t.color === c.hex);
       const arg      = c.hex ? `'${c.hex}'` : "null";
       return `<span class="color-dot${isActive ? " active" : ""}"
@@ -195,17 +202,24 @@ function renderTaskList(area) {
       </div>`;
   }).join("");
 
-  // 重繪 markers（優先 → 紅色，永久顯示名稱標籤）
-  favMarkers.forEach(m => map.removeLayer(m));
-  favMarkers = list
+  // 重繪 markers（用 markerClusterGroup，支援千筆不當機）
+  if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
+  favMarkers = [];
+
+  clusterGroup = L.markerClusterGroup({
+    chunkedLoading: true,
+    maxClusterRadius: 50,
+    disableClusteringAtZoom: 17
+  });
+
+  list
     .filter(t => t.lat && t.lng)
-    .map(t => {
-      // 有設色 → 彩色 PNG filter；無色+置頂 → 紅 PNG filter；無色+普通 → Leaflet 預設藍
+    .forEach(t => {
       const icon = t.color
         ? getColorIcon(t.color)
         : t.priority ? getPriorityIcon() : new L.Icon.Default();
       const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
-      const m = L.marker([Number(t.lat), Number(t.lng)], { icon }).addTo(map);
+      const m = L.marker([Number(t.lat), Number(t.lng)], { icon });
       m.bindPopup(popupHTML(t, true));
       m.bindTooltip(label, {
         permanent:  true,
@@ -213,18 +227,27 @@ function renderTaskList(area) {
         offset:     [0, 4],
         className:  t.priority ? "task-label task-label-priority" : "task-label"
       });
-      return m;
+      clusterGroup.addLayer(m);
+      favMarkers.push(m);
     });
+
+  map.addLayer(clusterGroup);
 }
 
 function goToTask(id) {
   const list = taskCache[mode] || [];
   const t    = list.find(x => x.id === id);
   if (t?.lat && t?.lng) {
-    map.setView([Number(t.lat), Number(t.lng)], 18);
     closeTaskPanel();
-    const marker = favMarkers.find((m, i) => list[i]?.id === id);
-    if (marker) setTimeout(() => marker.openPopup(), 300);
+    const marker = favMarkers.find(m => {
+      const ll = m.getLatLng();
+      return Math.abs(ll.lat - Number(t.lat)) < 0.00001 && Math.abs(ll.lng - Number(t.lng)) < 0.00001;
+    });
+    if (marker && clusterGroup) {
+      clusterGroup.zoomToShowLayer(marker, () => marker.openPopup());
+    } else {
+      map.setView([Number(t.lat), Number(t.lng)], 18);
+    }
   }
 }
 

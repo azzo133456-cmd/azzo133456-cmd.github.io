@@ -274,6 +274,9 @@ html, body {
   border: 1.5px solid #e8edf6;
   transition: background 0.15s;
   gap: 10px;
+  /* 瀏覽器自動跳過畫面外的卡片，大量清單不卡頓 */
+  content-visibility: auto;
+  contain-intrinsic-size: 0 72px;
 }
 
 .task-card:active { background: #e4eaf6; }
