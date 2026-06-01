@@ -3,6 +3,12 @@
 // ─────────────────────────────────────────
 const API = "https://api.azzo133456.page";
 
+// HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
 // Hash ↔ mode 對照表
 const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "YC": "ymctrl", "TC": "tyctrl" };
 const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl: "YC", tyctrl: "TC" };
@@ -148,14 +154,37 @@ function switchMode(newMode) {
 // ─────────────────────────────────────────
 // 任務清單：載入、渲染、面板開關
 // ─────────────────────────────────────────
+// localStorage 快照（只當「上次看到的畫面」，伺服器永遠是真相來源）
+function lsGetTasks(area) {
+  try { const s = localStorage.getItem(`tasklist_${area}`); return s ? JSON.parse(s) : null; }
+  catch { return null; }
+}
+function lsSetTasks(area, list) {
+  try { localStorage.setItem(`tasklist_${area}`, JSON.stringify(list)); } catch {}
+}
+
+// stale-while-revalidate：先用本地快照即時顯示，再背景抓最新、有變才重繪
 async function loadAndRenderTasks(area) {
+  const cached = lsGetTasks(area);
+  let shownSig = null;
+  if (cached) {
+    taskCache[area] = cached;
+    renderTaskList(area);
+    shownSig = JSON.stringify(cached);
+  }
+
   try {
     const res  = await fetch(`${API}/tasks/${area}`);
     const list = await res.json();
-    taskCache[area] = list;
-    renderTaskList(area);
+    const sig  = JSON.stringify(list);
+    lsSetTasks(area, list);            // 更新快照（以伺服器為準）
+    if (sig !== shownSig) {            // 與目前畫面不同才重繪
+      taskCache[area] = list;
+      if (mode === area) renderTaskList(area);   // 期間若已切走就不重繪
+    }
   } catch {
-    document.getElementById("taskCards").innerHTML = `<p class="task-empty">載入失敗</p>`;
+    if (!cached) document.getElementById("taskCards").innerHTML = `<p class="task-empty">載入失敗</p>`;
+    // 有快照時：保留舊畫面，不顯示失敗（離線可用）
   }
 }
 
@@ -215,8 +244,8 @@ function buildCardHtml(t, area, colors) {
     <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
       <span class="task-card-icon">${cardMarkerHtml(t.color, t.priority)}</span>
       <div class="task-card-body">
-        <div class="task-card-id">${name}</div>
-        ${addr ? `<div class="task-card-addr">${addr}</div>` : ""}
+        <div class="task-card-id">${escapeHtml(name)}</div>
+        ${addr ? `<div class="task-card-addr">${escapeHtml(addr)}</div>` : ""}
         ${meta ? `<div class="task-card-meta">${meta}</div>` : ""}
       </div>
       <div class="card-right">
@@ -232,7 +261,7 @@ function buildMarker(t) {
   const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
   const m = L.marker([Number(t.lat), Number(t.lng)], { icon });
   m.bindPopup(popupHTML(t, true));
-  m.bindTooltip(label, {
+  m.bindTooltip(escapeHtml(label), {
     permanent: true, direction: "bottom", offset: [0, 4],
     className: t.priority ? "task-label task-label-priority" : "task-label"
   });
@@ -265,7 +294,7 @@ async function addCtrlMarkersChunked(area, list) {
       });
       m._taskId = t.id;
       m.bindPopup(() => popupHTML(t, true));   // 延遲產生：點擊時才組 HTML，不在載入時建 1000+ 字串
-      m.bindTooltip(label, { permanent: true, direction: "bottom", offset: [0, 4], className: "task-label" });
+      m.bindTooltip(escapeHtml(label), { permanent: true, direction: "bottom", offset: [0, 4], className: "task-label" });
       tempMarkers.push(m);
       return m;
     });
@@ -390,8 +419,8 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
     : `<button onclick="addFav('${id}')">加入清單</button>`;
   const addrEsc = (address || "").replace(/'/g, "\\'");
   return `
-    <b>路燈編號：</b>${id}<br>
-    ${address ? `<b>地址：</b>${address}<br>` : ""}
+    <b>路燈編號：</b>${escapeHtml(id)}<br>
+    ${address ? `<b>地址：</b>${escapeHtml(address)}<br>` : ""}
     <b>經緯度：</b>${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}<br>
     <span style="display:inline-flex;gap:16px;">
       <span><b>瓦數：</b>${watt != null ? watt + " W" : "—"}</span>
@@ -440,7 +469,7 @@ async function searchLamp() {
     input.value = "";
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([Number(geo.lat), Number(geo.lng)]).addTo(map)
-      .bindPopup(`<b>${text}</b>`);
+      .bindPopup(`<b>${escapeHtml(text)}</b>`);
     map.setView([Number(geo.lat), Number(geo.lng)], 17);
     setTimeout(() => currentMarker.openPopup(), 300);
   } catch {
@@ -498,7 +527,7 @@ async function addFromInput() {
     const pendingGeo  = geo;
     currentMarker.bindPopup(`
       <div style="text-align:center;min-width:140px">
-        <div style="font-weight:600;margin-bottom:8px">${pendingText}</div>
+        <div style="font-weight:600;margin-bottom:8px">${escapeHtml(pendingText)}</div>
         <button onclick="confirmAddCustom('${pendingText.replace(/'/g,"\\'")}',${pendingGeo.lat},${pendingGeo.lng})"
           style="padding:6px 14px;background:#2F4F7F;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-right:6px">加入清單</button>
         <button onclick="cancelPreview()"
@@ -578,6 +607,7 @@ async function removeFav(id) {
     renderTaskList(mode);
   }
 
+  lsSetTasks(mode, taskCache[mode]);
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
@@ -673,6 +703,7 @@ function setTaskColor(id, hex) {
     renderTaskList(mode);
   }
 
+  lsSetTasks(mode, taskCache[mode]);
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}/color`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -695,6 +726,7 @@ async function togglePriority(id) {
     renderTaskList(mode);
   }
 
+  lsSetTasks(mode, taskCache[mode]);
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}/priority`, { method: "PATCH" });
 }
 
