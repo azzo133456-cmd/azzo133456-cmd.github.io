@@ -219,20 +219,27 @@ function renderTaskList(area) {
   favMarkers = [];
 
   if (isCtrl) {
-    // 智控器：千筆 → 用 markerClusterGroup
-    clusterGroup = L.markerClusterGroup({
-      chunkedLoading: true,
-      maxClusterRadius: 50,
-      disableClusteringAtZoom: 17
+    // 智控器：Canvas 渲染，全部畫在同一個 canvas，不產生個別 DOM，千筆不卡
+    const renderer = L.canvas({ padding: 0.5 });
+    favMarkers = list.filter(t => t.lat && t.lng).map(t => {
+      const fillColor = t.color || (t.priority ? "#e53e3e" : "#2A81CB");
+      const m = L.circleMarker([Number(t.lat), Number(t.lng)], {
+        renderer,
+        radius:       7,
+        fillColor,
+        color:        "#fff",
+        weight:       2,
+        fillOpacity:  1
+      });
+      m.bindPopup(popupHTML(t, true));
+      // 標籤改成 hover 顯示（permanent 在千筆下會嚴重拖慢）
+      const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
+      m.bindTooltip(label, { permanent: false, direction: "top", offset: [0, -6] });
+      m.addTo(map);
+      return m;
     });
-    list.filter(t => t.lat && t.lng).forEach(t => {
-      const m = buildMarker(t);
-      clusterGroup.addLayer(m);
-      favMarkers.push(m);
-    });
-    map.addLayer(clusterGroup);
   } else {
-    // 蘆竹/楊梅：直接加到地圖（原本樣式）
+    // 蘆竹/楊梅：原本 PNG marker + 永久標籤
     favMarkers = list.filter(t => t.lat && t.lng).map(t => {
       const m = buildMarker(t);
       m.addTo(map);
@@ -246,15 +253,15 @@ function goToTask(id) {
   const t    = list.find(x => x.id === id);
   if (t?.lat && t?.lng) {
     closeTaskPanel();
+
+    // ctrl 和 luzhu/yangmei 都從 favMarkers 找
     const marker = favMarkers.find(m => {
       const ll = m.getLatLng();
-      return Math.abs(ll.lat - Number(t.lat)) < 0.00001 && Math.abs(ll.lng - Number(t.lng)) < 0.00001;
+      return Math.abs(ll.lat - Number(t.lat)) < 0.00001 &&
+             Math.abs(ll.lng - Number(t.lng)) < 0.00001;
     });
-    if (marker && clusterGroup) {
-      clusterGroup.zoomToShowLayer(marker, () => marker.openPopup());
-    } else {
-      map.setView([Number(t.lat), Number(t.lng)], 18);
-    }
+    map.setView([Number(t.lat), Number(t.lng)], 18);
+    if (marker) setTimeout(() => marker.openPopup(), 300);
   }
 }
 
