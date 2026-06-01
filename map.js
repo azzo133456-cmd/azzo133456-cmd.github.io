@@ -16,6 +16,7 @@ let currentMarker = null;
 let customMarkers = [];
 let favMarkers = [];
 let clusterGroup  = null;   // markercluster 群組
+let ctrlClusterCache = {};  // 智控器：已建好的 cluster group 快取（area -> {cg, markers}）
 
 // ─────────────────────────────────────────
 // 任務清單（伺服器同步）
@@ -82,8 +83,12 @@ function initPanelDrag() {
   }, { passive: true });
 }
 
-// BFCache（上一頁回來）時重新同步
-window.addEventListener("pageshow", () => handleRoute());
+// BFCache（上一頁回來）：頁面狀態已完整保留，只在 hash 與當前模式不符時才重建
+window.addEventListener("pageshow", (e) => {
+  if (!e.persisted) return;   // 非 BFCache 還原由 load 事件負責，不重複建立
+  const hash = location.hash.replace(/^#\/?/, "");
+  if ((ROUTES[hash] ?? "fullhome") !== mode) handleRoute();
+});
 
 window.addEventListener("hashchange", handleRoute);
 
@@ -259,7 +264,7 @@ async function addCtrlMarkersChunked(area, list) {
         renderer, radius: 7, fillColor, color: "#fff", weight: 2, fillOpacity: 1
       });
       m._taskId = t.id;
-      m.bindPopup(popupHTML(t, true));
+      m.bindPopup(() => popupHTML(t, true));   // 延遲產生：點擊時才組 HTML，不在載入時建 1000+ 字串
       m.bindTooltip(label, { permanent: true, direction: "bottom", offset: [0, 4], className: "task-label" });
       tempMarkers.push(m);
       return m;
@@ -272,6 +277,7 @@ async function addCtrlMarkersChunked(area, list) {
   clusterGroup = cg;
   map.addLayer(cg);
   favMarkers = tempMarkers;
+  ctrlClusterCache[area] = { cg, markers: tempMarkers };
   updateCtrlLabelVisibility();
 }
 
@@ -288,6 +294,7 @@ function renderTaskList(area) {
     if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
     favMarkers.forEach(m => map.removeLayer(m));
     favMarkers = [];
+    delete ctrlClusterCache[area];
     return;
   }
 
@@ -307,10 +314,19 @@ function renderTaskList(area) {
     }
     vsRender(area);
 
-    // ── 地圖：Canvas 渲染，所有點畫在同一個 canvas ──
+    // ── 地圖：優先重用已建好的 cluster group（離開回來不必重建 1000+ marker）──
     if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
-    favMarkers = [];
-    addCtrlMarkersChunked(area, list);  // 非同步分批，最後一次性加入地圖
+    const cached = ctrlClusterCache[area];
+    const sig    = list.filter(t => t.lat && t.lng).map(t => t.id).join("|");
+    if (cached && cached.markers.map(m => m._taskId).join("|") === sig) {
+      clusterGroup = cached.cg;
+      favMarkers   = cached.markers;
+      map.addLayer(clusterGroup);
+      updateCtrlLabelVisibility();
+    } else {
+      favMarkers = [];
+      addCtrlMarkersChunked(area, list);  // 非同步分批建立並寫入快取
+    }
 
   } else {
     // ── 蘆竹/楊梅：原本全量渲染（筆數少，不需虛擬捲動）──
@@ -555,6 +571,7 @@ async function removeFav(id) {
     const marker = favMarkers.find(m => m._taskId === id);
     if (marker && clusterGroup) clusterGroup.removeLayer(marker);
     favMarkers = favMarkers.filter(m => m._taskId !== id);
+    if (ctrlClusterCache[mode]) ctrlClusterCache[mode].markers = favMarkers;
     document.getElementById("taskCount").textContent = taskCache[mode].length;
     vsRender(mode);
   } else {
@@ -848,7 +865,7 @@ function openCustomModal(lat, lng) {
 // ─────────────────────────────────────────
 // 智控器標籤可見性（縮放 >= 16 才顯示，避免 1000+ DOM 標籤拖慢縮放）
 // ─────────────────────────────────────────
-const CTRL_LABEL_MIN_ZOOM = 16;
+const CTRL_LABEL_MIN_ZOOM = 17;   // 與 disableClusteringAtZoom 一致：展開後才顯示標籤
 
 function updateCtrlLabelVisibility() {
   const mapEl = document.getElementById("map");
