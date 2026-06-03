@@ -137,9 +137,6 @@ function switchMode(newMode) {
   updateCtrlLabelVisibility();
   setRotationEnabled(!CTRL_MODES.includes(mode));   // 智控器關閉旋轉（少一個重繪來源、避免誤觸）
 
-  // 清除路線預覽
-  closeRoute();
-
   closeTaskPanel();
 
   if (mode === "fullhome") return;
@@ -428,11 +425,10 @@ function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
       <span><b>色溫：</b>${col  != null ? col  + " K" : "—"}</span>
     </span><br>
     <span style="display:inline-flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
-      ${btn}
+      <a href="${nav}" target="_blank" style="background:#1a73e8;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;">導航</a>
       <button onclick="openEdit('${id}','${addrEsc}',${lat},${lng},${watt ?? "null"},${col ?? "null"})">編輯</button>
-      <button onclick="routeToPoint(${lat},${lng})" style="background:#1a73e8;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">路線</button>
-    </span><br>
-    <a href="${nav}" target="_blank">導航</a>
+      ${btn}
+    </span>
   `;
 }
 
@@ -612,83 +608,6 @@ async function removeFav(id) {
   fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-// ─────────────────────────────────────────
-// 路線預覽
-// ─────────────────────────────────────────
-let routeLine       = null;
-let routeActive     = false;
-let routeNumMarkers = [];
-
-function clearRouteLayers() {
-  if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-  routeNumMarkers.forEach(m => map.removeLayer(m));
-  routeNumMarkers = [];
-}
-
-// Google encoded polyline 解碼
-function decodePolyline(encoded) {
-  const pts = [];
-  let i = 0, lat = 0, lng = 0;
-  while (i < encoded.length) {
-    let b, shift = 0, result = 0;
-    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-    lat += (result & 1) ? ~(result >> 1) : result >> 1;
-    shift = 0; result = 0;
-    do { b = encoded.charCodeAt(i++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
-    lng += (result & 1) ? ~(result >> 1) : result >> 1;
-    pts.push([lat / 1e5, lng / 1e5]);
-  }
-  return pts;
-}
-
-function closeRoute() {
-  clearRouteLayers();
-  routeActive = false;
-  document.getElementById("closeRouteBtn").style.display = "none";
-}
-
-async function routeToPoint(lat, lng) {
-  // 已有路線先清掉
-  closeRoute();
-
-  if (!locationLatLng) {
-    alert("請先按 📍 取得你的位置");
-    return;
-  }
-
-  const closeBtn = document.getElementById("closeRouteBtn");
-  closeBtn.textContent = "規劃中…";
-  closeBtn.style.display = "block";
-  closeBtn.disabled = true;
-
-  try {
-    const origin      = `${locationLatLng[0]},${locationLatLng[1]}`;
-    const destination = `${lat},${lng}`;
-    const res  = await fetch(`${API}/directions?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`);
-    const data = await res.json();
-
-    if (data.status !== "OK" || !data.routes?.[0]) {
-      alert(`路線規劃失敗：${data.status || "未知錯誤"}`);
-      closeBtn.style.display = "none";
-      return;
-    }
-
-    const allPts = data.routes[0].legs.flatMap(leg =>
-      leg.steps.flatMap(step => decodePolyline(step.polyline.points))
-    );
-
-    routeLine = L.polyline(allPts, { color:"#1a73e8", weight:5, opacity:0.9 }).addTo(map);
-    map.fitBounds(routeLine.getBounds(), { padding:[50,50] });
-
-    routeActive = true;
-    closeBtn.textContent = "✕ 關閉路線";
-    closeBtn.disabled = false;
-
-  } catch(e) {
-    alert("路線規劃失敗：" + e.message);
-    closeBtn.style.display = "none";
-  }
-}
 
 function setTaskColor(id, hex) {
   if (!TASK_MODES.includes(mode)) return;
