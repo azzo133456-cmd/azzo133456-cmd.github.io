@@ -764,6 +764,91 @@ async function addVisit() {
   }
 }
 
+// 截圖辨識：上傳公文截圖 → Vision OCR → 嘗試自動填入日期/時間/地點
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// 從 OCR 文字嘗試解析日期/時間/地點
+function parseOcrText(text) {
+  const result = { date: null, time: null, label: null };
+
+  // 民國年日期：114年6月15日 / 114年06月15日
+  let m = text.match(/(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  if (m) {
+    const y = Number(m[1]) + 1911;
+    result.date = `${y}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  } else {
+    // 西元日期：2026/6/15、2026-06-15、2026.6.15
+    m = text.match(/(20\d{2})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})\s*日?/);
+    if (m) result.date = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
+  }
+
+  // 時間：14:30、下午2時30分、下午2時、上午9時
+  m = text.match(/(\d{1,2}):(\d{2})/);
+  if (m) {
+    result.time = `${String(m[1]).padStart(2, "0")}:${m[2]}`;
+  } else {
+    m = text.match(/(上午|下午)\s*(\d{1,2})\s*時\s*(\d{1,2})?\s*分?/);
+    if (m) {
+      let h = Number(m[2]);
+      if (m[1] === "下午" && h < 12) h += 12;
+      result.time = `${String(h).padStart(2, "0")}:${String(m[3] || 0).padStart(2, "0")}`;
+    }
+  }
+
+  // 地點：抓「地點：」「會勘地點：」「地址：」後面的文字（到換行或全形/半形句點為止）
+  m = text.match(/(?:會勘)?地點[:：]\s*([^\n]+)/) || text.match(/地址[:：]\s*([^\n]+)/);
+  if (m) result.label = m[1].trim();
+
+  return result;
+}
+
+async function handleVisitOcr(file) {
+  if (!file) return;
+  const statusEl = document.getElementById("visitOcrStatus");
+  statusEl.style.display = "block";
+  statusEl.style.color = "#999";
+  statusEl.textContent = "辨識中...";
+
+  try {
+    const base64 = await fileToBase64(file);
+    const res = await fetch(`${API}/ocr`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: base64 })
+    });
+    const result = await res.json();
+    if (result.error) throw new Error(result.error);
+
+    const text = result.text || "";
+    if (!text.trim()) {
+      statusEl.style.color = "#c00";
+      statusEl.textContent = "❌ 辨識不到文字，請手動輸入";
+      return;
+    }
+
+    const parsed = parseOcrText(text);
+    if (parsed.date) document.getElementById("visitDate").value = parsed.date;
+    if (parsed.time) document.getElementById("visitTime").value = parsed.time;
+    if (parsed.label) document.getElementById("visitLabel").value = parsed.label;
+    document.getElementById("visitNote").value = text.trim();
+
+    statusEl.style.color = "#2F4F7F";
+    statusEl.textContent = "✅ 辨識完成，請檢查並修正欄位內容";
+  } catch (e) {
+    statusEl.style.color = "#c00";
+    statusEl.textContent = `❌ 辨識失敗：${e.message}`;
+  } finally {
+    document.getElementById("visitOcrFile").value = "";
+  }
+}
+
 async function deleteVisit(id) {
   if (!confirm("確定刪除此排程？")) return;
   await fetch(`${API}/visits/${mode}/${id}`, { method: "DELETE" });
