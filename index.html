@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2F4F7F" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 </head>
 
@@ -42,6 +45,7 @@
     <div id="map"></div>
     <button id="locateBtn" onclick="locateUser()">📍</button>
     <button id="northBtn" onclick="resetNorth()" title="重置朝北">🧭</button>
+    <div id="visitBanner" style="display:none;"></div>
   </div>
 
   <!-- 任務清單遮罩 -->
@@ -55,6 +59,7 @@
       <div class="panel-actions">
         <button class="panel-action-btn" onclick="openCustomModal()">自訂＋</button>
         <button class="panel-action-btn" onclick="document.getElementById('batchModal').style.display='flex'">批次＋</button>
+        <button id="visitPanelBtn" class="panel-action-btn" onclick="openVisitModal()" style="display:none;">會勘</button>
         <button class="panel-action-btn" onclick="clearAllTasks()" style="background:#fee;color:#c00;">清空</button>
         <button class="panel-action-btn" onclick="closeTaskPanel()" style="font-size:16px;padding:6px 10px;">↓</button>
       </div>
@@ -116,6 +121,36 @@
     </div>
   </div>
 
+  <!-- 會勘排程 Modal -->
+  <div id="visitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:24px;width:320px;max-width:92vw;max-height:80vh;overflow-y:auto;font-family:sans-serif;">
+      <h3 style="margin:0 0 12px;color:#2F4F7F">會勘排程</h3>
+
+      <div id="visitList" style="margin-bottom:14px;"></div>
+
+      <div style="border-top:1px solid #f0f0f0;padding-top:12px;">
+        <label style="font-size:13px;color:#555">地點 / 標籤（必填）</label>
+        <input id="visitLabel" type="text" placeholder="例：中山路口、變電箱A" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
+        <div style="display:flex;gap:8px">
+          <div style="flex:1"><label style="font-size:13px;color:#555">日期（必填）</label>
+            <input id="visitDate" type="date" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px"></div>
+          <div style="flex:1"><label style="font-size:13px;color:#555">時間</label>
+            <input id="visitTime" type="time" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px"></div>
+        </div>
+        <label style="font-size:13px;color:#555">備註</label>
+        <textarea id="visitNote" rows="2" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 12px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px;resize:vertical"></textarea>
+        <button onclick="addVisit()" style="width:100%;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">新增排程</button>
+      </div>
+
+      <div style="border-top:1px solid #f0f0f0;margin-top:12px;padding-top:12px;">
+        <button id="pushSubBtn" onclick="togglePushSubscription()" style="width:100%;padding:9px;background:#EFF3FB;color:#2F4F7F;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🔔 開啟會勘推播提醒</button>
+      </div>
+
+      <button onclick="document.getElementById('visitModal').style.display='none'" style="width:100%;margin-top:12px;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">關閉</button>
+      <p id="visitStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
+    </div>
+  </div>
+
   <!-- 自訂地點 Modal -->
   <div id="customModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:14px;padding:24px;width:300px;max-width:92vw;font-family:sans-serif;">
@@ -166,7 +201,7 @@
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=47"></script>
+  <script src="map.js?v=48"></script>
 
 </body>
 </html>

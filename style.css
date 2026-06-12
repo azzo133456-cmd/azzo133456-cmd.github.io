@@ -450,6 +450,17 @@ html, body {
 /* 智控器標籤：縮放不夠近時隱藏，避免 1000+ DOM 標籤拖慢縮放 */
 .ctrl-labels-hidden .task-label { display: none !important; }
 
+/* 會勘排程提示橫幅 */
+#visitBanner {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 900;
+  pointer-events: none;
+}
+#visitBanner > div { pointer-events: auto; }
+
 /* 遮罩（面板開啟時點外部關閉） */
 #taskOverlay {
   display: none;

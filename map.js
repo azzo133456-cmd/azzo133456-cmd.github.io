@@ -17,6 +17,8 @@ const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl:
 const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl"];
 // 智控器模式（只要藍+綠，不顯示 W/K）
 const CTRL_MODES  = ["ymctrl", "tyctrl"];
+// 有會勘排程功能的模式
+const VISIT_MODES = ["luzhu", "yangmei"];
 let mode = "fullhome";
 let currentMarker = null;
 let customMarkers = [];
@@ -47,6 +49,10 @@ window.addEventListener("load", () => {
     handleRoute();
   }, 200);
   initPanelDrag();
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js").catch(() => {});
+  }
 });
 
 // ─────────────────────────────────────────
@@ -130,6 +136,9 @@ function switchMode(newMode) {
   document.getElementById("taskListBtn").style.display    = isRegion ? "block" : "none";
   document.getElementById("addLocationBtn").style.display = isRegion ? "inline-block" : "none";
   document.getElementById("backBtn").style.display        = mode !== "fullhome" ? "inline-block" : "none";
+  document.getElementById("visitPanelBtn").style.display  = VISIT_MODES.includes(mode) ? "" : "none";
+
+  checkVisitBanner(mode);
 
   if (clusterGroup) { map.removeLayer(clusterGroup); clusterGroup = null; }
   favMarkers.forEach(m => map.removeLayer(m));
@@ -677,6 +686,205 @@ async function clearAllTasks() {
   if (!confirm(`確定清空全部 ${count} 筆任務？`)) return;
   await fetch(`${API}/tasks/${mode}`, { method: "DELETE" });
   await loadAndRenderTasks(mode);
+}
+
+// ─────────────────────────────────────────
+// 會勘排程（site_visits：日期+時間+地點+備註，與路燈無關）
+// ─────────────────────────────────────────
+function todayStr(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+async function openVisitModal() {
+  if (!VISIT_MODES.includes(mode)) return;
+  document.getElementById("visitModal").style.display = "flex";
+  document.getElementById("visitStatus").textContent = "";
+  updatePushButtonLabel();
+  await renderVisitList();
+}
+
+async function renderVisitList() {
+  const listEl = document.getElementById("visitList");
+  listEl.innerHTML = `<p style="text-align:center;color:#aaa;font-size:13px;padding:8px 0">載入中...</p>`;
+  try {
+    const res  = await fetch(`${API}/visits/${mode}`);
+    const list = await res.json();
+    if (!list.length) {
+      listEl.innerHTML = `<p style="text-align:center;color:#aaa;font-size:13px;padding:8px 0">尚無排程</p>`;
+      return;
+    }
+    listEl.innerHTML = list.map(v => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f7f9fd;border-radius:8px;margin-bottom:6px;border:1.5px solid #e8edf6;">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#2F4F7F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.label)}</div>
+          <div style="font-size:12px;color:#666;margin-top:2px">${escapeHtml(v.visit_date)}${v.visit_time ? "　" + escapeHtml(v.visit_time) : ""}</div>
+          ${v.note ? `<div style="font-size:12px;color:#999;margin-top:2px">${escapeHtml(v.note)}</div>` : ""}
+        </div>
+        <button class="task-del-btn" onclick="deleteVisit(${v.id})">×</button>
+      </div>
+    `).join("");
+  } catch {
+    listEl.innerHTML = `<p style="text-align:center;color:#c00;font-size:13px;padding:8px 0">載入失敗</p>`;
+  }
+}
+
+async function addVisit() {
+  const label      = document.getElementById("visitLabel").value.trim();
+  const visit_date = document.getElementById("visitDate").value;
+  const visit_time = document.getElementById("visitTime").value;
+  const note       = document.getElementById("visitNote").value.trim();
+  const statusEl   = document.getElementById("visitStatus");
+
+  if (!label || !visit_date) {
+    statusEl.textContent = "❌ 請輸入地點與日期";
+    statusEl.style.color = "#c00";
+    return;
+  }
+
+  const res = await fetch(`${API}/visits/${mode}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ label, visit_date, visit_time, note })
+  });
+  const result = await res.json();
+  if (result.ok) {
+    document.getElementById("visitLabel").value = "";
+    document.getElementById("visitDate").value = "";
+    document.getElementById("visitTime").value = "";
+    document.getElementById("visitNote").value = "";
+    statusEl.textContent = "✅ 已新增";
+    statusEl.style.color = "#2F4F7F";
+    await renderVisitList();
+    checkVisitBanner(mode);
+  } else {
+    statusEl.textContent = `❌ ${result.error}`;
+    statusEl.style.color = "#c00";
+  }
+}
+
+async function deleteVisit(id) {
+  if (!confirm("確定刪除此排程？")) return;
+  await fetch(`${API}/visits/${mode}/${id}`, { method: "DELETE" });
+  await renderVisitList();
+  checkVisitBanner(mode);
+}
+
+// ─────────────────────────────────────────
+// 會勘提示橫幅：明天有排程 且 現在已過下午4點
+// ─────────────────────────────────────────
+async function checkVisitBanner(area) {
+  const banner = document.getElementById("visitBanner");
+  banner.style.display = "none";
+  banner.innerHTML = "";
+  if (!VISIT_MODES.includes(area)) return;
+
+  const now = new Date();
+  if (now.getHours() < 16) return;
+
+  try {
+    const res  = await fetch(`${API}/visits/${area}`);
+    const list = await res.json();
+    const tomorrow = todayStr(1);
+    const dismissed = JSON.parse(localStorage.getItem("visitBannerDismissed") || "[]");
+
+    const upcoming = list.filter(v => v.visit_date === tomorrow && !dismissed.includes(v.id));
+    if (!upcoming.length) return;
+
+    banner.innerHTML = upcoming.map(v => `
+      <div style="display:flex;align-items:flex-start;gap:8px;background:#fff8e1;border:1.5px solid #ffd166;border-radius:10px;padding:10px 12px;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <span style="font-size:18px">📅</span>
+        <div style="flex:1;font-size:13px;color:#5a4a00;line-height:1.5">
+          <b>明天有會勘：${escapeHtml(v.label)}</b>${v.visit_time ? `　${escapeHtml(v.visit_time)}` : ""}
+          ${v.note ? `<br>${escapeHtml(v.note)}` : ""}
+        </div>
+        <button onclick="dismissVisitBanner(${v.id})" style="border:none;background:transparent;font-size:16px;color:#999;cursor:pointer;line-height:1;padding:0">×</button>
+      </div>
+    `).join("");
+    banner.style.display = "block";
+  } catch {}
+}
+
+function dismissVisitBanner(id) {
+  const dismissed = JSON.parse(localStorage.getItem("visitBannerDismissed") || "[]");
+  if (!dismissed.includes(id)) dismissed.push(id);
+  localStorage.setItem("visitBannerDismissed", JSON.stringify(dismissed));
+  checkVisitBanner(mode);
+}
+
+// ─────────────────────────────────────────
+// Web Push 推播訂閱
+// ─────────────────────────────────────────
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function updatePushButtonLabel() {
+  const btn = document.getElementById("pushSubBtn");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    btn.textContent = "🔔 此裝置不支援推播";
+    btn.disabled = true;
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    btn.textContent = sub ? "🔕 關閉會勘推播提醒" : "🔔 開啟會勘推播提醒";
+  } catch {
+    btn.textContent = "🔔 開啟會勘推播提醒";
+  }
+}
+
+async function togglePushSubscription() {
+  const statusEl = document.getElementById("visitStatus");
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    statusEl.textContent = "❌ 此裝置/瀏覽器不支援推播通知";
+    statusEl.style.color = "#c00";
+    return;
+  }
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+
+    if (existing) {
+      await fetch(`${API}/push/unsubscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: existing.endpoint })
+      });
+      await existing.unsubscribe();
+      statusEl.textContent = "✅ 已關閉推播提醒";
+      statusEl.style.color = "#2F4F7F";
+    } else {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        statusEl.textContent = "❌ 未授權通知權限";
+        statusEl.style.color = "#c00";
+        return;
+      }
+      const { key } = await (await fetch(`${API}/push/vapid-public-key`)).json();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(key)
+      });
+      await fetch(`${API}/push/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ area: mode, subscription: sub })
+      });
+      statusEl.textContent = "✅ 已開啟推播提醒（會勘前一天 16:00 後通知）";
+      statusEl.style.color = "#2F4F7F";
+    }
+  } catch (e) {
+    statusEl.textContent = `❌ 設定失敗：${e.message}`;
+    statusEl.style.color = "#c00";
+  }
+  updatePushButtonLabel();
 }
 
 
