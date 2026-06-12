@@ -865,13 +865,19 @@ function parseOcrText(text) {
   return result;
 }
 
+// 移除「主持人/聯絡人/出席者/列席者/副本」等與會勘內容無關的列
+function stripIrrelevantLines(text) {
+  const skip = /^[（(]?\s*(主持人|聯絡人|出席[人者]|列席[人者]|副本)\b/;
+  return text.split(/\r?\n/).filter(line => !skip.test(line.trim())).join("\n").trim();
+}
+
 // 將解析結果（日期/時間/地點/全文）填入會勘表單
 function applyOcrResult(text) {
   const parsed = parseOcrText(text);
   if (parsed.date)  document.getElementById("visitDate").value  = parsed.date;
   if (parsed.time)  document.getElementById("visitTime").value  = parsed.time;
   if (parsed.label) document.getElementById("visitLabel").value = parsed.label;
-  document.getElementById("visitNote").value = text.trim();
+  document.getElementById("visitNote").value = stripIrrelevantLines(text);
 
   const statusEl = document.getElementById("visitOcrStatus");
   statusEl.style.display = "block";
