@@ -701,8 +701,26 @@ async function openVisitModal() {
   if (!VISIT_MODES.includes(mode)) return;
   document.getElementById("visitModal").style.display = "flex";
   document.getElementById("visitStatus").textContent = "";
+  initVisitPasteZone();
   updatePushButtonLabel();
   await renderVisitList();
+}
+
+// 截圖貼上區：點擊後按 Ctrl+V 直接貼上剪貼簿圖片做 OCR
+function initVisitPasteZone() {
+  const zone = document.getElementById("visitPasteZone");
+  if (zone._bound) return;
+  zone._bound = true;
+  zone.addEventListener("paste", (e) => {
+    const items = e.clipboardData?.items || [];
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        handleVisitOcr(item.getAsFile());
+        return;
+      }
+    }
+  });
 }
 
 async function renderVisitList() {
