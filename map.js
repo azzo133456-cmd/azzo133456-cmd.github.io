@@ -720,6 +720,12 @@ function initVisitPasteZone() {
         return;
       }
     }
+    // 沒有圖片時，嘗試直接解析貼上的純文字（例：複製自公文的會勘事由/時間/地點）
+    const text = e.clipboardData?.getData("text/plain");
+    if (text && text.trim()) {
+      e.preventDefault();
+      applyOcrResult(text);
+    }
   });
 }
 
@@ -859,6 +865,20 @@ function parseOcrText(text) {
   return result;
 }
 
+// 將解析結果（日期/時間/地點/全文）填入會勘表單
+function applyOcrResult(text) {
+  const parsed = parseOcrText(text);
+  if (parsed.date)  document.getElementById("visitDate").value  = parsed.date;
+  if (parsed.time)  document.getElementById("visitTime").value  = parsed.time;
+  if (parsed.label) document.getElementById("visitLabel").value = parsed.label;
+  document.getElementById("visitNote").value = text.trim();
+
+  const statusEl = document.getElementById("visitOcrStatus");
+  statusEl.style.display = "block";
+  statusEl.style.color = "#2F4F7F";
+  statusEl.textContent = "✅ 已解析貼上的文字，請檢查並修正欄位內容";
+}
+
 async function handleVisitOcr(file) {
   if (!file) return;
   const statusEl = document.getElementById("visitOcrStatus");
@@ -883,12 +903,7 @@ async function handleVisitOcr(file) {
       return;
     }
 
-    const parsed = parseOcrText(text);
-    if (parsed.date) document.getElementById("visitDate").value = parsed.date;
-    if (parsed.time) document.getElementById("visitTime").value = parsed.time;
-    if (parsed.label) document.getElementById("visitLabel").value = parsed.label;
-    document.getElementById("visitNote").value = text.trim();
-
+    applyOcrResult(text);
     statusEl.style.color = "#2F4F7F";
     statusEl.textContent = "✅ 辨識完成，請檢查並修正欄位內容";
   } catch (e) {
