@@ -822,7 +822,15 @@ function parseOcrText(text) {
 
   // 地點：抓「地點：」「會勘地點：」「地址：」後面的文字（到換行或全形/半形句點為止）
   m = text.match(/(?:會勘)?地點[:：]\s*([^\n]+)/) || text.match(/地址[:：]\s*([^\n]+)/);
-  if (m) result.label = m[1].trim();
+  if (m) {
+    result.label = m[1].trim();
+  } else {
+    // 沒有「地點/地址：」標籤時，嘗試直接找路名/路口（例：中興路/中興二街口）
+    const road = /[一-鿿]{1,8}(?:路|街|大道)[一二三四五六七八九十百\d]*(?:段|巷|弄)?[一二三四五六七八九十百\d]*/;
+    const re = new RegExp(`${road.source}(?:[\\/、與和]\\s*${road.source})?(?:口|交叉口)?`);
+    m = text.match(re);
+    if (m) result.label = m[0].trim();
+  }
 
   return result;
 }
