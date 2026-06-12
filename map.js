@@ -865,10 +865,16 @@ function parseOcrText(text) {
   return result;
 }
 
-// 移除「主持人/聯絡人/出席者/列席者/副本」等與會勘內容無關的列
+// 移除「主持人/聯絡人/出席者/列席者/副本」等與會勘內容無關的內容
 function stripIrrelevantLines(text) {
-  const skip = /^[（(]?\s*(主持人|聯絡人|出席[人者]|列席[人者]|副本)\b/;
-  return text.split(/\r?\n/).filter(line => !skip.test(line.trim())).join("\n").trim();
+  const KEY = "(?:主持人|聯絡人|出席人|出席者|列席人|列席者|副本)";
+  // 整行以該欄位開頭（含常見編號，如 一、二、(一)、1. 等）→ 整行移除
+  const lineRe = new RegExp(`^[\\s　]*[（(]?[一二三四五六七八九十\\d]{0,3}[、.)）]?\\s*${KEY}`);
+  let lines = text.split(/\r?\n/).filter(line => !lineRe.test(line.trim()));
+  // 同一行中內嵌的欄位（例：「...　主持人：王科長」）→ 移除該段
+  const inlineRe = new RegExp(`(?:^|[\\s　、,，])${KEY}[:：][^\\n　]*`, "g");
+  lines = lines.map(line => line.replace(inlineRe, "").trim());
+  return lines.filter(l => l.length > 0).join("\n");
 }
 
 // 將解析結果（日期/時間/地點/全文）填入會勘表單
