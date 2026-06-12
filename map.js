@@ -792,16 +792,40 @@ function fileToBase64(file) {
   });
 }
 
+// 中文數字 → 阿拉伯數字（逐位讀法，用於民國年：一一五 → 115）
+function cnDigitsToInt(s) {
+  const map = { "零": 0, "〇": 0, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9 };
+  return Number([...s].map(c => map[c]).join(""));
+}
+
+// 中文數字 → 阿拉伯數字（一般讀法，用於月/日：六 → 6、十六 → 16、二十三 → 23）
+function cnNumToInt(s) {
+  const map = { "零": 0, "〇": 0, "一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10 };
+  if (s.length === 1) return map[s];
+  if (s === "十") return 10;
+  if (s[0] === "十") return 10 + (map[s[1]] || 0);          // 十X
+  if (s.length === 2) return map[s[0]] * 10;                 // X十
+  if (s.length === 3) return map[s[0]] * 10 + map[s[2]];     // X十X
+  return NaN;
+}
+
 // 從 OCR 文字嘗試解析日期/時間/地點
 function parseOcrText(text) {
   const result = { date: null, time: null, label: null };
 
-  // 民國年日期：114年6月15日 / 114年06月15日
-  let m = text.match(/(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+  const CN = "[一二三四五六七八九十〇零]";
+  const dateRe = new RegExp(`(\\d{2,3}|${CN}{2,3})\\s*年\\s*(\\d{1,2}|${CN}{1,3})\\s*月\\s*(\\d{1,2}|${CN}{1,3})\\s*日`);
+  let m = text.match(dateRe);
   if (m) {
-    const y = Number(m[1]) + 1911;
-    result.date = `${y}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
-  } else {
+    const toNum = (s, isYear) => /^\d+$/.test(s) ? Number(s) : (isYear ? cnDigitsToInt(s) : cnNumToInt(s));
+    const y = toNum(m[1], true) + 1911;
+    const mo = toNum(m[2], false);
+    const d  = toNum(m[3], false);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      result.date = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  if (!result.date) {
     // 西元日期：2026/6/15、2026-06-15、2026.6.15
     m = text.match(/(20\d{2})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})\s*日?/);
     if (m) result.date = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
