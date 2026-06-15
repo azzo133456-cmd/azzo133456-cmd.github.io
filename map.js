@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "58";
+const APP_VERSION = "59";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -794,10 +794,14 @@ async function locateVisit(label) {
       lng = Number(geo.lng);
     }
 
+    const nav = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     document.getElementById("visitModal").style.display = "none";
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lng]).addTo(map)
-      .bindPopup(`<b>${escapeHtml(label)}</b>`);
+      .bindPopup(`
+        <b>${escapeHtml(label)}</b><br>
+        <a href="${nav}" target="_blank" style="background:#1a73e8;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;margin-top:4px;">導航</a>
+      `);
     map.setView([lat, lng], 17);
     setTimeout(() => currentMarker.openPopup(), 300);
   } catch {
