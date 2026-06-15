@@ -749,11 +749,42 @@ async function renderVisitList() {
           <div style="font-size:12px;color:#666;margin-top:2px">${escapeHtml(v.visit_date)}${v.visit_time ? "　" + escapeHtml(v.visit_time) : ""}</div>
           ${v.note ? `<div style="font-size:12px;color:#999;margin-top:2px">${escapeHtml(v.note)}</div>` : ""}
         </div>
+        <button class="task-pri-btn active" onclick="locateVisit('${escapeHtml(v.label)}')" title="定位">📍</button>
         <button class="task-del-btn" onclick="deleteVisit(${v.id})">×</button>
       </div>
     `).join("");
   } catch {
     listEl.innerHTML = `<p style="text-align:center;color:#c00;font-size:13px;padding:8px 0">載入失敗</p>`;
+  }
+}
+
+// 點擊會勘排程的「📍」：將該地點地址送去定位，並把地圖移動到該位置
+async function locateVisit(label) {
+  try {
+    let lat, lng;
+
+    // 地點文字若已內含座標（例如「...（24.996214, 121.322952）」），直接使用
+    const coordMatch = label.match(/([\d.]+)\s*,\s*([\d.]+)/);
+    if (coordMatch) {
+      lat = Number(coordMatch[1]);
+      lng = Number(coordMatch[2]);
+    } else {
+      const res = await fetch(`${API}/geocode?q=${encodeURIComponent(label)}`);
+      if (!res.ok) { alert("地址定位失敗，請確認地點是否正確"); return; }
+      const geo = await res.json();
+      if (!geo?.lat) { alert("找不到此地點"); return; }
+      lat = Number(geo.lat);
+      lng = Number(geo.lng);
+    }
+
+    document.getElementById("visitModal").style.display = "none";
+    if (currentMarker) map.removeLayer(currentMarker);
+    currentMarker = L.marker([lat, lng]).addTo(map)
+      .bindPopup(`<b>${escapeHtml(label)}</b>`);
+    map.setView([lat, lng], 17);
+    setTimeout(() => currentMarker.openPopup(), 300);
+  } catch {
+    alert("地址定位失敗，請稍後再試");
   }
 }
 
