@@ -933,6 +933,21 @@ async function deleteVisit(id) {
   checkVisitBanner(mode);
 }
 
+// 將日期+時間轉成中文顯示，例：2026-06-15 + 16:00 → 6月15日（星期一）下午4時
+function formatVisitDateTime(date, time) {
+  const d = new Date(`${date}T00:00:00`);
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  let s = `${d.getMonth() + 1}月${d.getDate()}日（星期${weekdays[d.getDay()]}）`;
+  if (time) {
+    const [h, m] = time.split(":").map(Number);
+    let h12 = h % 12;
+    if (h12 === 0) h12 = 12;
+    s += `${h < 12 ? "上午" : "下午"}${h12}時`;
+    if (m) s += `${m}分`;
+  }
+  return s;
+}
+
 // ─────────────────────────────────────────
 // 會勘提示橫幅：
 //  - 今天的排程：只要還沒過會勘時間就提醒（沒填時間視為整天）
@@ -972,8 +987,7 @@ async function checkVisitBanner(area) {
       <div style="display:flex;align-items:flex-start;gap:8px;background:#fff8e1;border:1.5px solid #ffd166;border-radius:10px;padding:10px 12px;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
         <span style="font-size:18px">📅</span>
         <div style="flex:1;font-size:13px;color:#5a4a00;line-height:1.5">
-          <b>${v._when}有會勘：${escapeHtml(v.label)}</b>${v.visit_time ? `　${escapeHtml(v.visit_time)}` : ""}
-          ${v.note ? `<br>${escapeHtml(v.note)}` : ""}
+          <b>${v._when}有會勘：${escapeHtml(v.label)}</b>　${escapeHtml(formatVisitDateTime(v.visit_date, v.visit_time))}
         </div>
         <button onclick="dismissVisitBanner(${v.id})" style="border:none;background:transparent;font-size:16px;color:#999;cursor:pointer;line-height:1;padding:0">×</button>
       </div>
