@@ -934,7 +934,9 @@ async function deleteVisit(id) {
 }
 
 // ─────────────────────────────────────────
-// 會勘提示橫幅：明天有排程 且 現在已過下午4點
+// 會勘提示橫幅：
+//  - 今天的排程：只要還沒過會勘時間就提醒（沒填時間視為整天）
+//  - 明天的排程：現在已過下午4點才提醒
 // ─────────────────────────────────────────
 async function checkVisitBanner(area) {
   const banner = document.getElementById("visitBanner");
@@ -942,23 +944,35 @@ async function checkVisitBanner(area) {
   banner.innerHTML = "";
   if (!VISIT_MODES.includes(area)) return;
 
-  const now = new Date();
-  if (now.getHours() < 16) return;
-
   try {
     const res  = await fetch(`${API}/visits/${area}`);
     const list = await res.json();
+
+    const now      = new Date();
+    const nowTime  = now.toTimeString().slice(0, 5); // HH:MM
+    const today    = todayStr(0);
     const tomorrow = todayStr(1);
     const dismissed = JSON.parse(localStorage.getItem("visitBannerDismissed") || "[]");
 
-    const upcoming = list.filter(v => v.visit_date === tomorrow && !dismissed.includes(v.id));
+    const todayVisits = list.filter(v =>
+      v.visit_date === today &&
+      (!v.visit_time || v.visit_time >= nowTime) &&
+      !dismissed.includes(v.id)
+    ).map(v => ({ ...v, _when: "今天" }));
+
+    const tomorrowVisits = now.getHours() >= 16
+      ? list.filter(v => v.visit_date === tomorrow && !dismissed.includes(v.id))
+            .map(v => ({ ...v, _when: "明天" }))
+      : [];
+
+    const upcoming = [...todayVisits, ...tomorrowVisits];
     if (!upcoming.length) return;
 
     banner.innerHTML = upcoming.map(v => `
       <div style="display:flex;align-items:flex-start;gap:8px;background:#fff8e1;border:1.5px solid #ffd166;border-radius:10px;padding:10px 12px;margin-bottom:6px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
         <span style="font-size:18px">📅</span>
         <div style="flex:1;font-size:13px;color:#5a4a00;line-height:1.5">
-          <b>明天有會勘：${escapeHtml(v.label)}</b>${v.visit_time ? `　${escapeHtml(v.visit_time)}` : ""}
+          <b>${v._when}有會勘：${escapeHtml(v.label)}</b>${v.visit_time ? `　${escapeHtml(v.visit_time)}` : ""}
           ${v.note ? `<br>${escapeHtml(v.note)}` : ""}
         </div>
         <button onclick="dismissVisitBanner(${v.id})" style="border:none;background:transparent;font-size:16px;color:#999;cursor:pointer;line-height:1;padding:0">×</button>
