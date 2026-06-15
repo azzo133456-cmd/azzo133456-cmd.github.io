@@ -15,6 +15,11 @@
 
 <body>
 
+  <!-- 新版本提示 -->
+  <div id="updateBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#2F4F7F;color:#fff;text-align:center;padding:10px 12px;font-size:14px;font-weight:700;cursor:pointer;" onclick="location.reload()">
+    🔄 有新版本可用，點此更新
+  </div>
+
   <!-- 全螢幕首頁 -->
   <div id="fullHome">
     <div class="home-title">路燈查詢</div>
@@ -212,7 +217,7 @@
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=57"></script>
+  <script src="map.js?v=58"></script>
 
 </body>
 </html>

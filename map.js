@@ -3,6 +3,9 @@
 // ─────────────────────────────────────────
 const API = "https://api.azzo133456.page";
 
+// 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
+const APP_VERSION = "58";
+
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c =>
@@ -53,7 +56,21 @@ window.addEventListener("load", () => {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("service-worker.js").catch(() => {});
   }
+
+  checkForUpdate();
+  setInterval(checkForUpdate, 5 * 60 * 1000); // 每 5 分鐘檢查一次新版本
 });
+
+// 檢查是否有新版本（version.json），有的話顯示更新提示
+async function checkForUpdate() {
+  try {
+    const res = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
+    const data = await res.json();
+    if (data.version && data.version !== APP_VERSION) {
+      document.getElementById("updateBanner").style.display = "block";
+    }
+  } catch {}
+}
 
 // ─────────────────────────────────────────
 // 任務面板拖曳（改良版）
