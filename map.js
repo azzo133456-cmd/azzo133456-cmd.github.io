@@ -975,11 +975,11 @@ async function checkVisitBanner(area) {
     const todayVisits = list.filter(v =>
       v.visit_date === today &&
       (!v.visit_time || v.visit_time >= nowTime) &&
-      !dismissed.includes(v.id)
+      !dismissed.includes(`${v.id}_${v.visit_date}`)
     ).map(v => ({ ...v, _when: "今天" }));
 
     const tomorrowVisits = now.getHours() >= 16
-      ? list.filter(v => v.visit_date === tomorrow && !dismissed.includes(v.id))
+      ? list.filter(v => v.visit_date === tomorrow && !dismissed.includes(`${v.id}_${v.visit_date}`))
             .map(v => ({ ...v, _when: "明天" }))
       : [];
 
@@ -992,16 +992,24 @@ async function checkVisitBanner(area) {
         <div style="flex:1;font-size:13px;color:#5a4a00;line-height:1.5">
           <b>${v._when}有會勘：${escapeHtml(v.label)}</b>　${escapeHtml(formatVisitDateTime(v.visit_date, v.visit_time))}
         </div>
-        <button onclick="dismissVisitBanner(${v.id})" style="border:none;background:transparent;font-size:16px;color:#999;cursor:pointer;line-height:1;padding:0">×</button>
+        <button onclick="dismissVisitBanner(${v.id}, '${v.visit_date}')" style="border:none;background:transparent;font-size:16px;color:#999;cursor:pointer;line-height:1;padding:0">×</button>
       </div>
     `).join("");
     banner.style.display = "block";
   } catch {}
 }
 
-function dismissVisitBanner(id) {
-  const dismissed = JSON.parse(localStorage.getItem("visitBannerDismissed") || "[]");
-  if (!dismissed.includes(id)) dismissed.push(id);
+// 關閉提示只針對「該排程＋該日期」生效，換一天會重新提醒
+function dismissVisitBanner(id, visitDate) {
+  const key = `${id}_${visitDate}`;
+  const today = todayStr(0);
+  let dismissed = JSON.parse(localStorage.getItem("visitBannerDismissed") || "[]");
+  // 順手清掉過期（早於今天）的紀錄，避免無限累積
+  dismissed = dismissed.filter(k => {
+    const d = k.split("_").slice(1).join("_");
+    return d >= today;
+  });
+  if (!dismissed.includes(key)) dismissed.push(key);
   localStorage.setItem("visitBannerDismissed", JSON.stringify(dismissed));
   checkVisitBanner(mode);
 }
