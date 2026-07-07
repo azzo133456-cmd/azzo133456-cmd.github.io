@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "59";
+const APP_VERSION = "60";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -22,6 +22,7 @@ const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl"];
 const CTRL_MODES  = ["ymctrl", "tyctrl"];
 // 有會勘排程功能的模式
 const VISIT_MODES = ["luzhu", "yangmei"];
+let visitListCache = []; // 會勘清單快取，供 locateVisit 依 id 查詢
 let mode = "fullhome";
 let currentMarker = null;
 let customMarkers = [];
@@ -755,6 +756,7 @@ async function renderVisitList() {
   try {
     const res  = await fetch(`${API}/visits/${mode}`);
     const list = await res.json();
+    visitListCache = list;
     if (!list.length) {
       listEl.innerHTML = `<p style="text-align:center;color:#aaa;font-size:13px;padding:8px 0">尚無排程</p>`;
       return;
@@ -766,7 +768,7 @@ async function renderVisitList() {
           <div style="font-size:12px;color:#666;margin-top:2px">${escapeHtml(v.visit_date)}${v.visit_time ? "　" + escapeHtml(v.visit_time) : ""}</div>
           ${v.note ? `<div style="font-size:12px;color:#999;margin-top:2px">${escapeHtml(v.note)}</div>` : ""}
         </div>
-        <button class="task-pri-btn active" onclick="locateVisit('${escapeHtml(v.label)}')" title="定位">📍</button>
+        <button class="task-pri-btn active" onclick="locateVisit(${v.id})" title="定位">📍</button>
         <button class="task-del-btn" onclick="deleteVisit(${v.id})">×</button>
       </div>
     `).join("");
@@ -776,7 +778,10 @@ async function renderVisitList() {
 }
 
 // 點擊會勘排程的「📍」：將該地點地址送去定位，並把地圖移動到該位置
-async function locateVisit(label) {
+async function locateVisit(id) {
+  const v = visitListCache.find(x => x.id === id);
+  if (!v) return;
+  const label = v.label;
   try {
     let lat, lng;
 
