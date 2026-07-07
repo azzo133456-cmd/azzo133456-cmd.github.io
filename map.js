@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "60";
+const APP_VERSION = "61";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -827,23 +827,28 @@ async function addVisit() {
     return;
   }
 
-  const res = await fetch(`${API}/visits/${mode}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ label, visit_date, visit_time, note })
-  });
-  const result = await res.json();
-  if (result.ok) {
-    document.getElementById("visitLabel").value = "";
-    document.getElementById("visitDate").value = "";
-    document.getElementById("visitTime").value = "";
-    document.getElementById("visitNote").value = "";
-    statusEl.textContent = "✅ 已新增";
-    statusEl.style.color = "#2F4F7F";
-    await renderVisitList();
-    checkVisitBanner(mode);
-  } else {
-    statusEl.textContent = `❌ ${result.error}`;
+  try {
+    const res = await fetch(`${API}/visits/${mode}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label, visit_date, visit_time, note })
+    });
+    const result = await res.json();
+    if (result.ok) {
+      document.getElementById("visitLabel").value = "";
+      document.getElementById("visitDate").value = "";
+      document.getElementById("visitTime").value = "";
+      document.getElementById("visitNote").value = "";
+      statusEl.textContent = "✅ 已新增";
+      statusEl.style.color = "#2F4F7F";
+      await renderVisitList();
+      checkVisitBanner(mode);
+    } else {
+      statusEl.textContent = `❌ ${result.error}`;
+      statusEl.style.color = "#c00";
+    }
+  } catch (e) {
+    statusEl.textContent = `❌ 網路錯誤：${e.message}`;
     statusEl.style.color = "#c00";
   }
 }
