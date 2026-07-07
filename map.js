@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "61";
+const APP_VERSION = "62";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -885,33 +885,61 @@ function parseOcrText(text) {
   const result = { date: null, time: null, label: null };
 
   const CN = "[一二三四五六七八九十〇零]";
-  const dateRe = new RegExp(`(\\d{2,3}|${CN}{2,3})\\s*年\\s*(\\d{1,2}|${CN}{1,3})\\s*月\\s*(\\d{1,2}|${CN}{1,3})\\s*日`);
-  let m = text.match(dateRe);
-  if (m) {
+  const dateRePat = `(\\d{2,3}|${CN}{2,3})\\s*年\\s*(\\d{1,2}|${CN}{1,3})\\s*月\\s*(\\d{1,2}|${CN}{1,3})\\s*日`;
+  const dateRe = new RegExp(dateRePat);
+
+  function parseMinguoMatch(m) {
     const toNum = (s, isYear) => /^\d+$/.test(s) ? Number(s) : (isYear ? cnDigitsToInt(s) : cnNumToInt(s));
     const y = toNum(m[1], true) + 1911;
     const mo = toNum(m[2], false);
     const d  = toNum(m[3], false);
-    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
-      result.date = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31)
+      return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    return null;
+  }
+
+  // 優先抓「會勘時間：」後面的日期與時間，避免誤取發文日期
+  const visitTimeBlock = text.match(/會勘時間[:：]\s*([^\n]{0,60})/);
+  if (visitTimeBlock) {
+    const block = visitTimeBlock[1];
+    const dm = block.match(new RegExp(dateRePat));
+    if (dm) result.date = parseMinguoMatch(dm);
+    const tm = block.match(/(上午|下午)\s*(\d{1,2})\s*時\s*(\d{1,2})?\s*分?/) ||
+               block.match(/(\d{1,2}):(\d{2})/);
+    if (tm) {
+      if (tm[1] === "上午" || tm[1] === "下午") {
+        let h = Number(tm[2]);
+        if (tm[1] === "下午" && h < 12) h += 12;
+        result.time = `${String(h).padStart(2, "0")}:${String(tm[3] || 0).padStart(2, "0")}`;
+      } else {
+        result.time = `${String(tm[1]).padStart(2, "0")}:${tm[2]}`;
+      }
     }
+  }
+
+  // 日期未解析到，退而求其次用全文第一個日期
+  if (!result.date) {
+    const m = text.match(dateRe);
+    if (m) result.date = parseMinguoMatch(m);
   }
   if (!result.date) {
     // 西元日期：2026/6/15、2026-06-15、2026.6.15
-    m = text.match(/(20\d{2})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})\s*日?/);
+    const m = text.match(/(20\d{2})[\/\-.年](\d{1,2})[\/\-.月](\d{1,2})\s*日?/);
     if (m) result.date = `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}`;
   }
 
-  // 時間：14:30、下午2時30分、下午2時、上午9時
-  m = text.match(/(\d{1,2}):(\d{2})/);
-  if (m) {
-    result.time = `${String(m[1]).padStart(2, "0")}:${m[2]}`;
-  } else {
-    m = text.match(/(上午|下午)\s*(\d{1,2})\s*時\s*(\d{1,2})?\s*分?/);
+  // 時間未從會勘時間區塊取到，退而求其次用全文第一個時間
+  if (!result.time) {
+    let m = text.match(/(\d{1,2}):(\d{2})/);
     if (m) {
-      let h = Number(m[2]);
-      if (m[1] === "下午" && h < 12) h += 12;
-      result.time = `${String(h).padStart(2, "0")}:${String(m[3] || 0).padStart(2, "0")}`;
+      result.time = `${String(m[1]).padStart(2, "0")}:${m[2]}`;
+    } else {
+      m = text.match(/(上午|下午)\s*(\d{1,2})\s*時\s*(\d{1,2})?\s*分?/);
+      if (m) {
+        let h = Number(m[2]);
+        if (m[1] === "下午" && h < 12) h += 12;
+        result.time = `${String(h).padStart(2, "0")}:${String(m[3] || 0).padStart(2, "0")}`;
+      }
     }
   }
 
