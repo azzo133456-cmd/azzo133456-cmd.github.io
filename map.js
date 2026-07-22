@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "62";
+const APP_VERSION = "63";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -13,15 +13,15 @@ function escapeHtml(s) {
 }
 
 // Hash ↔ mode 對照表
-const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "YC": "ymctrl", "TC": "tyctrl" };
-const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl: "YC", tyctrl: "TC" };
+const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "YC": "ymctrl", "TC": "tyctrl", "XB": "xinbei" };
+const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl: "YC", tyctrl: "TC", xinbei: "XB" };
 
 // 有任務清單的模式（共用）
-const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl"];
+const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl", "xinbei"];
 // 智控器模式（只要藍+綠，不顯示 W/K）
 const CTRL_MODES  = ["ymctrl", "tyctrl"];
 // 有會勘排程功能的模式
-const VISIT_MODES = ["luzhu", "yangmei"];
+const VISIT_MODES = ["luzhu", "yangmei", "xinbei"];
 let visitListCache = []; // 會勘清單快取，供 locateVisit 依 id 查詢
 let mode = "fullhome";
 let currentMarker = null;
@@ -33,7 +33,7 @@ let ctrlClusterCache = {};  // 智控器：已建好的 cluster group 快取（a
 // ─────────────────────────────────────────
 // 任務清單（伺服器同步）
 // ─────────────────────────────────────────
-let taskCache = { luzhu: [], yangmei: [], ymctrl: [], tyctrl: [] }; // 本地快取
+let taskCache = { luzhu: [], yangmei: [], ymctrl: [], tyctrl: [], xinbei: [] }; // 本地快取
 
 // ─────────────────────────────────────────
 // 地圖初始化
@@ -172,6 +172,7 @@ function switchMode(newMode) {
   if (mode === "yangmei") { map.setView([24.916, 121.135], 13); }
   if (mode === "ymctrl")  { map.setView([24.916, 121.135], 13); }
   if (mode === "tyctrl")  { map.setView([24.993, 121.301], 13); }
+  if (mode === "xinbei")  { map.setView([25.04, 121.57], 11); }   // 三重/汐止/五股/石碇/深坑分散多區，縮小比例先看全貌
 
   loadAndRenderTasks(mode);
 }
