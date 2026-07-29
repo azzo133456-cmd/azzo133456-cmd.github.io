@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "66";
+const APP_VERSION = "67";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -582,9 +582,20 @@ async function searchLamp() {
     const geo = await r2.json();
     input.value = "";
     if (currentMarker) map.removeLayer(currentMarker);
-    currentMarker = L.marker([Number(geo.lat), Number(geo.lng)]).addTo(map)
-      .bindPopup(`<b>${escapeHtml(text)}</b>`);
+    currentMarker = L.marker([Number(geo.lat), Number(geo.lng)]).addTo(map);
     map.setView([Number(geo.lat), Number(geo.lng)], 17);
+
+    const isRegion = TASK_MODES.includes(mode);
+    const addBtn = isRegion
+      ? `<button onclick="confirmAddCustom('${text.replace(/'/g,"\\'")}',${geo.lat},${geo.lng})"
+          style="padding:6px 14px;background:#2F4F7F;color:#fff;border:none;border-radius:6px;cursor:pointer;margin-top:8px">加入清單</button>`
+      : "";
+    currentMarker.bindPopup(`
+      <div style="text-align:center;min-width:120px">
+        <div style="font-weight:600">${escapeHtml(text)}</div>
+        ${addBtn}
+      </div>
+    `);
     setTimeout(() => currentMarker.openPopup(), 300);
   } catch {
     alert("查無此路燈編號");
