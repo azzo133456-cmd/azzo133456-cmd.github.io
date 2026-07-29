@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "63";
+const APP_VERSION = "64";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -13,15 +13,17 @@ function escapeHtml(s) {
 }
 
 // Hash ↔ mode 對照表
-const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "YC": "ymctrl", "TC": "tyctrl", "XB": "xinbei" };
-const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl: "YC", tyctrl: "TC", xinbei: "XB" };
+const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "YC": "ymctrl", "TC": "tyctrl", "XB": "xinbei", "TP": "taipei" };
+const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", ymctrl: "YC", tyctrl: "TC", xinbei: "XB", taipei: "TP" };
 
 // 有任務清單的模式（共用）
-const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl", "xinbei"];
+const TASK_MODES = ["luzhu", "yangmei", "ymctrl", "tyctrl", "xinbei", "taipei"];
 // 智控器模式（只要藍+綠，不顯示 W/K）
 const CTRL_MODES  = ["ymctrl", "tyctrl"];
 // 有會勘排程功能的模式
-const VISIT_MODES = ["luzhu", "yangmei", "xinbei"];
+const VISIT_MODES = ["luzhu", "yangmei", "xinbei", "taipei"];
+// 台北市：獨立資料庫，查詢/加入清單需帶 area=taipei 給後端
+const TAIPEI_MODE = "taipei";
 let visitListCache = []; // 會勘清單快取，供 locateVisit 依 id 查詢
 let mode = "fullhome";
 let currentMarker = null;
@@ -33,7 +35,7 @@ let ctrlClusterCache = {};  // 智控器：已建好的 cluster group 快取（a
 // ─────────────────────────────────────────
 // 任務清單（伺服器同步）
 // ─────────────────────────────────────────
-let taskCache = { luzhu: [], yangmei: [], ymctrl: [], tyctrl: [], xinbei: [] }; // 本地快取
+let taskCache = { luzhu: [], yangmei: [], ymctrl: [], tyctrl: [], xinbei: [], taipei: [] }; // 本地快取
 
 // ─────────────────────────────────────────
 // 地圖初始化
@@ -173,6 +175,7 @@ function switchMode(newMode) {
   if (mode === "ymctrl")  { map.setView([24.916, 121.135], 13); }
   if (mode === "tyctrl")  { map.setView([24.993, 121.301], 13); }
   if (mode === "xinbei")  { map.setView([25.04, 121.57], 11); }   // 三重/汐止/五股/石碇/深坑分散多區，縮小比例先看全貌
+  if (mode === "taipei")  { map.setView([25.03, 121.53], 12); }
 
   loadAndRenderTasks(mode);
 }
@@ -256,7 +259,9 @@ function buildCardHtml(t, area, colors) {
   const addr      = (!t.is_custom && t.address) ? t.address : "";
   const isCtrl    = CTRL_MODES.includes(area);
   const meta      = isCtrl ? "" :
-    [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
+    area === "taipei"
+      ? [t.district, t.village, t.pole_height].filter(Boolean).join("　")
+      : [t.watt ? t.watt + "W" : "", t.col ? t.col + "K" : ""].filter(Boolean).join("　");
   const priCls    = t.priority ? " priority" : "";
   const priBtnCls = t.priority ? " active" : "";
   const idSafe    = t.id.replace(/'/g, "\\'");
@@ -438,12 +443,41 @@ function closeTaskPanel() {
 // ─────────────────────────────────────────
 // Popup HTML 模板
 // ─────────────────────────────────────────
-function popupHTML({ id, address, lat, lng, watt, col }, isFav = false) {
+function popupHTML(t, isFav = false) {
+  const { id, address, lat, lng, watt, col } = t;
   const nav = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
   const btn = isFav
     ? `<button onclick="removeFav('${id}')">刪除</button>`
     : `<button onclick="addFav('${id}')">加入清單</button>`;
   const addrEsc = (address || "").replace(/'/g, "\\'");
+
+  // 台北市：欄位與桃園/新北不同（無瓦數/色溫，改顯示行政區/里/分隊/管區代碼/位置屬性/桿高）
+  const isTaipei = t.district !== undefined || t.point_id !== undefined;
+  if (isTaipei) {
+    return `
+      <b>燈牌號碼：</b>${escapeHtml(t.tag_id || "（尚未建置）")}<br>
+      <b>點位系統編號：</b>${escapeHtml(t.point_id || id)}<br>
+      ${address ? `<b>地點：</b>${escapeHtml(address)}<br>` : ""}
+      <b>經緯度：</b>${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}<br>
+      <span style="display:inline-flex;gap:12px;flex-wrap:wrap;">
+        <span><b>行政區：</b>${escapeHtml(t.district) || "—"}</span>
+        <span><b>里：</b>${escapeHtml(t.village) || "—"}</span>
+      </span><br>
+      <span style="display:inline-flex;gap:12px;flex-wrap:wrap;">
+        <span><b>分隊：</b>${escapeHtml(t.squad) || "—"}</span>
+        <span><b>管區代碼：</b>${escapeHtml(t.zone_code) || "—"}</span>
+      </span><br>
+      <span style="display:inline-flex;gap:12px;flex-wrap:wrap;">
+        <span><b>位置屬性：</b>${escapeHtml(t.loc_type) || "—"}</span>
+        <span><b>桿高：</b>${escapeHtml(t.pole_height) || "—"}</span>
+      </span><br>
+      <span style="display:inline-flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+        <a href="${nav}" target="_blank" style="background:#1a73e8;color:#fff;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;">導航</a>
+        ${btn}
+      </span>
+    `;
+  }
+
   return `
     <b>路燈編號：</b>${escapeHtml(id)}<br>
     ${address ? `<b>地址：</b>${escapeHtml(address)}<br>` : ""}
@@ -470,7 +504,8 @@ async function searchLamp() {
 
   // 先嘗試路燈編號
   try {
-    const res = await fetch(`${API}/lamp/${encodeURIComponent(text)}`);
+    const areaQ = mode === TAIPEI_MODE ? "?area=taipei" : "";
+    const res = await fetch(`${API}/lamp/${encodeURIComponent(text)}${areaQ}`);
     if (res.ok) {
       const data = await res.json();
       if (!data.error) {
@@ -578,7 +613,8 @@ document.getElementById("lampInput").addEventListener("keydown", e => {
 // ─────────────────────────────────────────
 async function showLamp(id) {
   try {
-    const res = await fetch(`${API}/lamp/${encodeURIComponent(id)}`);
+    const areaQ = mode === TAIPEI_MODE ? "?area=taipei" : "";
+    const res = await fetch(`${API}/lamp/${encodeURIComponent(id)}${areaQ}`);
     if (!res.ok) { alert("查無此路燈編號"); return; }
     const data = await res.json();
     if (data.error) { alert("查無此路燈編號"); return; }
