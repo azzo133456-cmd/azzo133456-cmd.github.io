@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "64";
+const APP_VERSION = "65";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -497,6 +497,55 @@ function popupHTML(t, isFav = false) {
 // ─────────────────────────────────────────
 // 搜尋
 // ─────────────────────────────────────────
+// 直接把一筆路燈資料放到地圖上（marker + popup）
+function showLampData(data) {
+  const lat = Number(data.lat), lng = Number(data.lng);
+  if (currentMarker) map.removeLayer(currentMarker);
+  currentMarker = L.marker([lat, lng]).addTo(map);
+  currentMarker.bindPopup(popupHTML(data));
+  map.setView([lat, lng], 18);
+  setTimeout(() => currentMarker.openPopup(), 300);
+}
+
+// 台北市：燈牌號碼／點位系統編號可能對到多筆資料（舊點位刪除後號碼沿用、不同公園各自編號撞號），
+// 有多筆候選時列出來讓使用者自己選，而不是自動顯示第一筆
+function closeCandidatePicker() {
+  const p = document.getElementById("candidatePicker");
+  if (p) p.remove();
+}
+
+function showCandidatePicker(candidates, keyword) {
+  closeCandidatePicker();
+  window._lampCandidates = candidates;
+
+  const items = candidates.map((c, i) => `
+    <div class="candidate-item" data-idx="${i}" style="padding:8px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+      <div style="font-weight:600;color:#2F4F7F">${escapeHtml(c.tag_id || "（尚未建置燈牌）")}
+        <span style="font-weight:400;color:#999;font-size:12px">　點位 ${escapeHtml(c.point_id)}</span></div>
+      <div style="font-size:13px;color:#555">${escapeHtml(c.address || "")}</div>
+      <div style="font-size:12px;color:#999">${escapeHtml(c.district || "")}${c.village ? "・" + escapeHtml(c.village) : ""}</div>
+    </div>`).join("");
+
+  const p = document.createElement("div");
+  p.id = "candidatePicker";
+  p.style.cssText = "position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:99999;width:320px;max-width:92vw;max-height:70vh;overflow-y:auto;background:#fff;border-radius:12px;box-shadow:0 6px 24px rgba(0,0,0,.3);padding:12px;font-family:sans-serif;";
+  p.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <b style="color:#2F4F7F;font-size:14px">找到 ${candidates.length} 筆符合「${escapeHtml(keyword)}」，請選擇</b>
+      <button onclick="closeCandidatePicker()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#999;line-height:1;">×</button>
+    </div>
+    ${items}
+  `;
+  document.body.appendChild(p);
+  p.querySelectorAll(".candidate-item").forEach(el => {
+    el.addEventListener("click", () => {
+      const idx = Number(el.dataset.idx);
+      closeCandidatePicker();
+      showLampData(window._lampCandidates[idx]);
+    });
+  });
+}
+
 async function searchLamp() {
   const input = document.getElementById("lampInput");
   const text  = input.value.trim();
@@ -510,12 +559,11 @@ async function searchLamp() {
       const data = await res.json();
       if (!data.error) {
         input.value = "";
-        const lat = Number(data.lat), lng = Number(data.lng);
-        if (currentMarker) map.removeLayer(currentMarker);
-        currentMarker = L.marker([lat, lng]).addTo(map);
-        currentMarker.bindPopup(popupHTML(data));
-        map.setView([lat, lng], 18);
-        setTimeout(() => currentMarker.openPopup(), 300);
+        if (Array.isArray(data.candidates)) {
+          showCandidatePicker(data.candidates, text);
+        } else {
+          showLampData(data);
+        }
         return;
       }
     }
@@ -619,14 +667,11 @@ async function showLamp(id) {
     const data = await res.json();
     if (data.error) { alert("查無此路燈編號"); return; }
 
-    const lat = Number(data.lat);
-    const lng = Number(data.lng);
-
-    if (currentMarker) map.removeLayer(currentMarker);
-    currentMarker = L.marker([lat, lng]).addTo(map);
-    currentMarker.bindPopup(popupHTML(data));
-    map.setView([lat, lng], 18);
-    setTimeout(() => currentMarker.openPopup(), 300);
+    if (Array.isArray(data.candidates)) {
+      showCandidatePicker(data.candidates, id);
+      return;
+    }
+    showLampData(data);
   } catch {
     alert("查詢失敗，請稍後再試");
   }
