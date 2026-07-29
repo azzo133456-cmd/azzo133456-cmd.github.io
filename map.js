@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "65";
+const APP_VERSION = "66";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -446,14 +446,17 @@ function closeTaskPanel() {
 function popupHTML(t, isFav = false) {
   const { id, address, lat, lng, watt, col } = t;
   const nav = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-  const btn = isFav
-    ? `<button onclick="removeFav('${id}')">刪除</button>`
-    : `<button onclick="addFav('${id}')">加入清單</button>`;
   const addrEsc = (address || "").replace(/'/g, "\\'");
 
   // 台北市：欄位與桃園/新北不同（無瓦數/色溫，改顯示行政區/里/分隊/管區代碼/位置屬性/桿高）
   const isTaipei = t.district !== undefined || t.point_id !== undefined;
   if (isTaipei) {
+    // 清單/加入用「點位系統編號」當鍵值（唯一），不用燈牌號碼——燈牌號碼可能重複，
+    // 用它當鍵會讓兩個不同地點的路燈互相蓋掉彼此，見 popupHTML 上方註解
+    const keyId = t.point_id || id;
+    const btn = isFav
+      ? `<button onclick="removeFav('${keyId}')">刪除</button>`
+      : `<button onclick="addFav('${keyId}')">加入清單</button>`;
     return `
       <b>燈牌號碼：</b>${escapeHtml(t.tag_id || "（尚未建置）")}<br>
       <b>點位系統編號：</b>${escapeHtml(t.point_id || id)}<br>
@@ -478,6 +481,9 @@ function popupHTML(t, isFav = false) {
     `;
   }
 
+  const btn = isFav
+    ? `<button onclick="removeFav('${id}')">刪除</button>`
+    : `<button onclick="addFav('${id}')">加入清單</button>`;
   return `
     <b>路燈編號：</b>${escapeHtml(id)}<br>
     ${address ? `<b>地址：</b>${escapeHtml(address)}<br>` : ""}
@@ -609,6 +615,12 @@ async function addFromInput() {
       input.value = "";
       await loadAndRenderTasks(mode);
       toggleTaskPanel();
+      return;
+    }
+
+    if (res1.ambiguous?.length) {
+      // 台北市：這個號碼對到多筆路燈，不能自動選，改用搜尋框查詢後點選要加的那一筆
+      alert(`「${text}」對到 ${res1.ambiguous[0].count} 筆不同的路燈，無法自動加入。\n請用上方搜尋框查這個編號，從清單裡點選要加入的那一筆。`);
       return;
     }
 
@@ -1285,10 +1297,14 @@ async function doBatchAdd() {
 
   let msg = `✅ 加入 ${result.added} 筆`;
   if (result.notFound?.length) msg += `，查無：${result.notFound.join("、")}`;
+  if (result.ambiguous?.length) {
+    // 台北市：燈牌號碼對到多筆不同路燈，不能自動選，列出來請使用者改用搜尋框逐一挑選
+    msg += `\n⚠️ 以下號碼對到多筆不同路燈，未加入，請改用上方搜尋框查詢並選擇：${result.ambiguous.map(a => a.key).join("、")}`;
+  }
   status.textContent = msg;
 
   await loadAndRenderTasks(mode);
-  if (!result.notFound?.length) {
+  if (!result.notFound?.length && !result.ambiguous?.length) {
     document.getElementById("batchIds").value = "";
     document.getElementById("batchStatus").textContent = "";
     setTimeout(() => document.getElementById("batchModal").style.display = "none", 800);
