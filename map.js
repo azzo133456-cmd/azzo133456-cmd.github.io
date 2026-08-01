@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "67";
+const APP_VERSION = "68";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -289,7 +289,10 @@ function buildCardHtml(t, area, colors) {
 
 function buildMarker(t) {
   const icon  = t.color ? getColorIcon(t.color) : t.priority ? getPriorityIcon() : new L.Icon.Default();
-  const label = t.is_custom ? (t.label || t.address || t.id) : t.id;
+  // 台北市：marker 名稱統一顯示燈牌號碼（沒有燈牌號碼才退回系統 id）
+  const label = t.is_custom ? (t.label || t.address || t.id)
+              : mode === "taipei" ? (t.tag_id || t.id)
+              : t.id;
   const m = L.marker([Number(t.lat), Number(t.lng)], { icon });
   m.bindPopup(popupHTML(t, true));
   m.bindTooltip(escapeHtml(label), {
