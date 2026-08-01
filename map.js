@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "68";
+const APP_VERSION = "69";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -255,7 +255,10 @@ function vsRender(area) {
 }
 
 function buildCardHtml(t, area, colors) {
-  const name      = t.is_custom ? (t.address || t.id) : t.id;
+  // 台北市：清單名稱統一顯示燈牌號碼（沒有燈牌號碼才退回系統 id），跟地圖 marker 一致
+  const name      = t.is_custom ? (t.address || t.id)
+                   : area === "taipei" ? (t.tag_id || t.id)
+                   : t.id;
   const addr      = (!t.is_custom && t.address) ? t.address : "";
   const isCtrl    = CTRL_MODES.includes(area);
   const meta      = isCtrl ? "" :
