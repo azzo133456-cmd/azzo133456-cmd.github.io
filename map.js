@@ -1624,6 +1624,7 @@ async function doImport() {
 
     const BATCH = 2000;
     let done = 0;
+    let allConflicts = [];
     for (let i = 0; i < rows.length; i += BATCH) {
       const chunk = rows.slice(i, i + BATCH);
       const r = await fetch(`${API}/import`, {
@@ -1634,11 +1635,19 @@ async function doImport() {
       const result = await r.json();
       if (!result.ok) throw new Error(result.error);
       done += chunk.length;
+      if (Array.isArray(result.conflicts) && result.conflicts.length) {
+        allConflicts = allConflicts.concat(result.conflicts);
+      }
       const pct = Math.round(done / rows.length * 100);
       status.textContent = `上傳中… ${pct}%（${done} / ${rows.length} 筆）`;
     }
 
-    status.textContent = `✅ 匯入完成：${done} 筆`;
+    if (allConflicts.length) {
+      const sample = allConflicts.slice(0, 10).map(c => `${c.id}（原${c.existing_area}→匯入${c.incoming_area}）`).join("、");
+      status.innerHTML = `✅ 匯入完成，但 ${allConflicts.length} 筆因為跟現有資料行政區不同（撞號）被跳過未覆蓋：<br>${sample}${allConflicts.length > 10 ? "…" : ""}`;
+    } else {
+      status.textContent = `✅ 匯入完成：${done} 筆`;
+    }
     fileInput.value = "";
   } catch (e) {
     status.textContent = `❌ 錯誤：${e.message}`;
