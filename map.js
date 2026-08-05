@@ -565,7 +565,7 @@ async function searchLamp() {
 
   // 先嘗試路燈編號
   try {
-    const areaQ = mode === TAIPEI_MODE ? "?area=taipei" : "";
+    const areaQ = mode === TAIPEI_MODE ? "?area=taipei" : `?mode=${encodeURIComponent(mode)}`;
     const res = await fetch(`${API}/lamp/${encodeURIComponent(text)}${areaQ}`);
     if (res.ok) {
       const data = await res.json();
@@ -690,7 +690,7 @@ document.getElementById("lampInput").addEventListener("keydown", e => {
 // ─────────────────────────────────────────
 async function showLamp(id) {
   try {
-    const areaQ = mode === TAIPEI_MODE ? "?area=taipei" : "";
+    const areaQ = mode === TAIPEI_MODE ? "?area=taipei" : `?mode=${encodeURIComponent(mode)}`;
     const res = await fetch(`${API}/lamp/${encodeURIComponent(id)}${areaQ}`);
     if (!res.ok) { alert("查無此路燈編號"); return; }
     const data = await res.json();
