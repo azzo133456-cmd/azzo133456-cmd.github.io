@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "74";
+const APP_VERSION = "75";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -878,6 +878,31 @@ function initVisitPasteZone() {
   });
 }
 
+// 會勘清單分組：今天 / 明天 / 接下來 7 天 / 更晚
+// 過期的（visit_date < today）後端在 GET 時就清掉了，這裡只會看到今天以後的
+function visitGroup(dayDiff) {
+  if (dayDiff <= 0) return { key: "today",  label: "今天", bar: "#d64545", labelColor: "#c0392b" };
+  if (dayDiff === 1) return { key: "tomorrow", label: "明天", bar: "#e8930c", labelColor: "#b5730a" };
+  if (dayDiff <= 7)  return { key: "week",  label: "接下來 7 天", bar: "#b9c2d4", labelColor: "#8a93a5" };
+  return { key: "later", label: "更晚", bar: "#e8edf6", labelColor: "#a0a8b8" };
+}
+
+// 相對時間：越近講得越精確，遠的只講還有幾天
+function visitRelative(dayDiff, time, nowMin) {
+  if (dayDiff === 0) {
+    if (!time) return { text: "", past: false };
+    const mins = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) - nowMin;
+    if (mins < 0)  return { text: "已過", past: true };
+    if (mins < 60) return { text: `${mins} 分鐘後`, past: false };
+    return { text: `${Math.floor(mins / 60)} 小時後`, past: false };
+  }
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  const wd = "週" + weekdays[new Date(`${todayStr(dayDiff)}T00:00:00`).getDay()];
+  if (dayDiff === 1) return { text: wd, past: false };
+  if (dayDiff <= 7)  return { text: wd, past: false };
+  return { text: `還有 ${dayDiff} 天`, past: false };
+}
+
 async function renderVisitList() {
   const listEl = document.getElementById("visitList");
   listEl.innerHTML = `<p style="text-align:center;color:#aaa;font-size:13px;padding:8px 0">載入中...</p>`;
@@ -889,16 +914,50 @@ async function renderVisitList() {
       listEl.innerHTML = `<p style="text-align:center;color:#aaa;font-size:13px;padding:8px 0">尚無排程</p>`;
       return;
     }
-    listEl.innerHTML = list.map(v => `
-      <div style="display:flex;align-items:center;gap:8px;padding:8px;background:#f7f9fd;border-radius:8px;margin-bottom:6px;border:1.5px solid #e8edf6;">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:700;color:#2F4F7F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.label)}</div>
-          <div style="font-size:12px;color:#666;margin-top:2px">${escapeHtml(v.visit_date)}${v.visit_time ? "　" + escapeHtml(v.visit_time) : ""}</div>
-          ${v.note ? `<div style="font-size:12px;color:#999;margin-top:2px">${escapeHtml(v.note)}</div>` : ""}
-        </div>
-        <button class="task-pri-btn active" onclick="locateVisit(${v.id})" title="定位">📍</button>
-        <button class="task-del-btn" onclick="deleteVisit(${v.id})">×</button>
-      </div>
+
+    const today  = todayStr(0);
+    const nowMin = Number(taiwanNowTime().slice(0, 2)) * 60 + Number(taiwanNowTime().slice(3, 5));
+    const dayOf  = d => Math.round(
+      (Date.parse(`${d}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000
+    );
+
+    // 依日期+時間排序後分組（後端已排過，這裡保險再排一次）
+    const sorted = [...list].sort((a, b) =>
+      (a.visit_date + (a.visit_time || "99:99")).localeCompare(b.visit_date + (b.visit_time || "99:99"))
+    );
+
+    const groups = new Map();
+    for (const v of sorted) {
+      const diff = dayOf(v.visit_date);
+      const g = visitGroup(diff);
+      if (!groups.has(g.key)) groups.set(g.key, { ...g, items: [] });
+      groups.get(g.key).items.push({ v, diff });
+    }
+
+    listEl.innerHTML = [...groups.values()].map(g => `
+      <div style="font-size:12px;color:${g.labelColor};margin:10px 0 6px;">${g.label}</div>
+      ${g.items.map(({ v, diff }) => {
+        const rel = visitRelative(diff, v.visit_time, nowMin);
+        // 主標：今天/明天看時間，之後看日期
+        const head = v.visit_time
+          ? v.visit_time
+          : (diff <= 1 ? "未定時間" : `${Number(v.visit_date.slice(5, 7))}/${Number(v.visit_date.slice(8, 10))}`);
+        const dim = rel.past ? "opacity:.5;" : "";
+        return `
+        <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#fff;border:1.5px solid #e8edf6;border-left:3px solid ${g.bar};border-radius:0;margin-bottom:6px;${dim}">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+              <span style="font-size:15px;font-weight:700;color:#2F4F7F">${escapeHtml(head)}</span>
+              <span style="font-size:12px;color:${rel.past ? "#999" : g.labelColor}">${escapeHtml(rel.text)}</span>
+            </div>
+            <div style="font-size:13px;color:#555;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.label)}</div>
+            ${v.note ? `<div style="font-size:12px;color:#999;margin-top:2px">${escapeHtml(v.note)}</div>` : ""}
+          </div>
+          <button class="task-pri-btn active" onclick="locateVisit(${v.id})" title="定位">📍</button>
+          <button onclick="deleteVisit(${v.id})" title="刪除"
+            style="border:none;background:transparent;color:#c8cedb;font-size:15px;cursor:pointer;padding:2px 4px;line-height:1">×</button>
+        </div>`;
+      }).join("")}
     `).join("");
   } catch {
     listEl.innerHTML = `<p style="text-align:center;color:#c00;font-size:13px;padding:8px 0">載入失敗</p>`;
