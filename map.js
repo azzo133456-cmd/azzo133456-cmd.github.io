@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "71";
+const APP_VERSION = "72";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -55,6 +55,7 @@ window.addEventListener("load", () => {
     handleRoute();
   }, 200);
   initPanelDrag();
+  initSuggest();
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("service-worker.js").catch(() => {});
@@ -557,6 +558,72 @@ function showCandidatePicker(candidates, keyword) {
       showLampData(window._lampCandidates[idx]);
     });
   });
+}
+
+// ─────────────────────────────────────────
+// 地址輸入建議（Places Autocomplete）
+// 省呼叫次數：debounce 350ms、至少 3 字、且要含中文才查
+// （路燈編號是英數字，不該觸發地址建議）
+// ─────────────────────────────────────────
+let suggestTimer = null;
+let suggestAbort = null;
+
+function closeSuggest() {
+  const box = document.getElementById("suggestBox");
+  if (box) { box.style.display = "none"; box.innerHTML = ""; }
+}
+
+function pickSuggest(text) {
+  const input = document.getElementById("lampInput");
+  input.value = text;
+  closeSuggest();
+  searchLamp();
+}
+
+async function fetchSuggest(q) {
+  // 取消上一個還在飛的請求，避免舊結果蓋掉新結果
+  if (suggestAbort) suggestAbort.abort();
+  suggestAbort = new AbortController();
+
+  try {
+    const c = map.getCenter();
+    const url = `${API}/places/autocomplete?q=${encodeURIComponent(q)}&lat=${c.lat}&lng=${c.lng}`;
+    const res = await fetch(url, { signal: suggestAbort.signal });
+    if (!res.ok) return closeSuggest();
+    const { suggestions } = await res.json();
+    if (!suggestions || !suggestions.length) return closeSuggest();
+
+    const box = document.getElementById("suggestBox");
+    box.innerHTML = suggestions
+      .map(s => `<div class="suggest-item" data-text="${escapeHtml(s.text)}">${escapeHtml(s.text)}</div>`)
+      .join("");
+    box.querySelectorAll(".suggest-item").forEach(el => {
+      // 用 mousedown：搶在 input 的 blur 之前，否則清單會先被關掉
+      el.addEventListener("mousedown", (e) => { e.preventDefault(); pickSuggest(el.dataset.text); });
+    });
+    box.style.display = "block";
+  } catch (e) {
+    if (e.name !== "AbortError") closeSuggest();
+  }
+}
+
+function initSuggest() {
+  const input = document.getElementById("lampInput");
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    clearTimeout(suggestTimer);
+    // 沒中文＝多半在打路燈編號，不浪費 Autocomplete 額度
+    if (q.length < 3 || !/[一-鿿]/.test(q)) return closeSuggest();
+    suggestTimer = setTimeout(() => fetchSuggest(q), 350);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" || e.key === "Enter") closeSuggest();
+  });
+
+  input.addEventListener("blur", () => setTimeout(closeSuggest, 150));
 }
 
 async function searchLamp() {

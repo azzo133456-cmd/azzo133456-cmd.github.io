@@ -43,6 +43,9 @@
     <button id="addLocationBtn" onclick="addFromInput()" style="display:none;padding:8px 12px;border:none;border-radius:20px;background:#EFF3FB;color:#2F4F7F;font-size:16px;font-weight:700;cursor:pointer;flex-shrink:0;">＋</button>
   </div>
 
+  <!-- 地址輸入建議清單 -->
+  <div id="suggestBox"></div>
+
   <!-- 浮動任務清單按鈕 -->
   <button id="taskListBtn" onclick="toggleTaskPanel()">
     清單 <span id="taskCount">0</span>
@@ -220,7 +223,7 @@
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=71"></script>
+  <script src="map.js?v=72"></script>
 
 </body>
 </html>
