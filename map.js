@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "75";
+const APP_VERSION = "76";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -890,16 +890,13 @@ function visitGroup(dayDiff) {
 // 相對時間：越近講得越精確，遠的只講還有幾天
 function visitRelative(dayDiff, time, nowMin) {
   if (dayDiff === 0) {
-    if (!time) return { text: "", past: false };
+    if (!time) return { text: "未定時間", past: false };
     const mins = Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5)) - nowMin;
     if (mins < 0)  return { text: "已過", past: true };
     if (mins < 60) return { text: `${mins} 分鐘後`, past: false };
     return { text: `${Math.floor(mins / 60)} 小時後`, past: false };
   }
-  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
-  const wd = "週" + weekdays[new Date(`${todayStr(dayDiff)}T00:00:00`).getDay()];
-  if (dayDiff === 1) return { text: wd, past: false };
-  if (dayDiff <= 7)  return { text: wd, past: false };
+  if (dayDiff === 1) return { text: "明天", past: false };
   return { text: `還有 ${dayDiff} 天`, past: false };
 }
 
@@ -938,19 +935,19 @@ async function renderVisitList() {
       <div style="font-size:12px;color:${g.labelColor};margin:10px 0 6px;">${g.label}</div>
       ${g.items.map(({ v, diff }) => {
         const rel = visitRelative(diff, v.visit_time, nowMin);
-        // 主標：今天/明天看時間，之後看日期
-        const head = v.visit_time
-          ? v.visit_time
-          : (diff <= 1 ? "未定時間" : `${Number(v.visit_date.slice(5, 7))}/${Number(v.visit_date.slice(8, 10))}`);
+        // 主標一律「月/日（週X）時:分」，日期不能被相對時間取代
+        const wd = ["日", "一", "二", "三", "四", "五", "六"][new Date(`${v.visit_date}T00:00:00`).getDay()];
+        const head = `${Number(v.visit_date.slice(5, 7))}/${Number(v.visit_date.slice(8, 10))}（${wd}）`
+          + (v.visit_time ? `　${v.visit_time}` : "");
         const dim = rel.past ? "opacity:.5;" : "";
         return `
-        <div style="display:flex;align-items:center;gap:8px;padding:10px;background:#fff;border:1.5px solid #e8edf6;border-left:3px solid ${g.bar};border-radius:0;margin-bottom:6px;${dim}">
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 12px;background:#fff;border:1.5px solid #e8edf6;border-left:4px solid ${g.bar};border-radius:0;margin-bottom:8px;${dim}">
           <div style="flex:1;min-width:0">
             <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
-              <span style="font-size:15px;font-weight:700;color:#2F4F7F">${escapeHtml(head)}</span>
+              <span style="font-size:16px;font-weight:700;color:#2F4F7F">${escapeHtml(head)}</span>
               <span style="font-size:12px;color:${rel.past ? "#999" : g.labelColor}">${escapeHtml(rel.text)}</span>
             </div>
-            <div style="font-size:13px;color:#555;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.label)}</div>
+            <div style="font-size:14px;color:#444;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.label)}</div>
             ${v.note ? `<div style="font-size:12px;color:#999;margin-top:2px">${escapeHtml(v.note)}</div>` : ""}
           </div>
           <button class="task-pri-btn active" onclick="locateVisit(${v.id})" title="定位">📍</button>

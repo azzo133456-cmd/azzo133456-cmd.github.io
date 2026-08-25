@@ -131,8 +131,12 @@
 
   <!-- 會勘排程 Modal -->
   <div id="visitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:14px;padding:24px;width:320px;max-width:92vw;max-height:80vh;overflow-y:auto;font-family:sans-serif;">
-      <h3 style="margin:0 0 12px;color:#2F4F7F">會勘排程</h3>
+    <div style="background:#fff;border-radius:14px;padding:0 20px 20px;width:440px;max-width:94vw;max-height:88vh;overflow-y:auto;font-family:sans-serif;">
+      <div style="position:sticky;top:0;background:#fff;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;margin-bottom:6px;border-bottom:1px solid #f0f0f0;">
+        <h3 style="margin:0;color:#2F4F7F">會勘排程</h3>
+        <button onclick="document.getElementById('visitModal').style.display='none'" title="關閉"
+          style="border:none;background:#f0f2f7;color:#666;width:32px;height:32px;border-radius:16px;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;">×</button>
+      </div>
 
       <div id="visitList" style="margin-bottom:14px;"></div>
 
@@ -165,7 +169,6 @@
         <button id="pushSubBtn" onclick="togglePushSubscription()" style="width:100%;padding:9px;background:#EFF3FB;color:#2F4F7F;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🔔 開啟會勘推播提醒</button>
       </div>
 
-      <button onclick="document.getElementById('visitModal').style.display='none'" style="width:100%;margin-top:12px;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">關閉</button>
       <p id="visitStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
   </div>
@@ -220,7 +223,7 @@
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=75"></script>
+  <script src="map.js?v=76"></script>
 
 </body>
 </html>
