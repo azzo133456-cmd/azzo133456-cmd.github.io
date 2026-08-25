@@ -469,29 +469,3 @@ html, body {
   z-index: 7999;
   background: transparent;
 }
-
-/* 地址輸入建議清單（Places Autocomplete） */
-#suggestBox {
-  position: fixed;
-  top: 54px; left: 10px; right: 10px;
-  max-height: 45vh;
-  overflow-y: auto;
-  background: #fff;
-  border: 1px solid #e0e6f0;
-  border-top: none;
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 6px 18px rgba(0,0,0,.12);
-  z-index: 9998;
-  display: none;
-  font-family: sans-serif;
-}
-#suggestBox .suggest-item {
-  padding: 10px 14px;
-  font-size: 14px;
-  color: #333;
-  cursor: pointer;
-  border-bottom: 1px solid #f2f4f8;
-}
-#suggestBox .suggest-item:last-child { border-bottom: none; }
-#suggestBox .suggest-item:active,
-#suggestBox .suggest-item.active { background: #EFF3FB; }
