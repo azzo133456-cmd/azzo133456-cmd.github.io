@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "70";
+const APP_VERSION = "71";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -585,7 +585,13 @@ async function searchLamp() {
   // 找不到路燈 → 嘗試地址定位
   try {
     const r2 = await fetch(`${API}/geocode?q=${encodeURIComponent(text)}`);
-    if (!r2.ok) { alert("查無此路燈編號，地址定位也失敗"); return; }
+    if (!r2.ok) {
+      // 帶出後端回傳的原因（金鑰／額度／查無結果），比只說「失敗」好排查
+      let why = "";
+      try { const e = await r2.json(); why = e.error || ""; } catch {}
+      alert(why ? `查無此路燈編號；${why}` : "查無此路燈編號，地址定位也失敗");
+      return;
+    }
     const geo = await r2.json();
     input.value = "";
     if (currentMarker) map.removeLayer(currentMarker);
