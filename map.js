@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "71";
+const APP_VERSION = "73";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
