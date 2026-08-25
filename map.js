@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "73";
+const APP_VERSION = "74";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -827,14 +827,24 @@ async function clearAllTasks() {
 // ─────────────────────────────────────────
 // 會勘排程（site_visits：日期+時間+地點+備註，與路燈無關）
 // ─────────────────────────────────────────
-function todayStr(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const y  = d.getFullYear();
-  const m  = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
+// 一律用台灣時區判斷「今天/明天/現在幾點」，與後端 taiwanDateTime() 對齊
+// （裝置時區設錯或人在國外時，本地時間會跟後端算出不同的日期）
+function taiwanParts(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Taipei",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  });
+  const p = {};
+  for (const x of fmt.formatToParts(date)) p[x.type] = x.value;
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
 }
+
+function todayStr(offsetDays = 0) {
+  return taiwanParts(new Date(Date.now() + offsetDays * 86400000)).date;
+}
+
+function taiwanNowTime() { return taiwanParts().time; }   // HH:MM
 
 async function openVisitModal() {
   if (!VISIT_MODES.includes(mode)) return;
@@ -903,18 +913,33 @@ async function locateVisit(id) {
   try {
     let lat, lng;
 
-    // 地點文字若已內含座標（例如「...（24.996214, 121.322952）」），直接使用
-    const coordMatch = label.match(/([\d.]+)\s*,\s*([\d.]+)/);
-    if (coordMatch) {
-      lat = Number(coordMatch[1]);
-      lng = Number(coordMatch[2]);
+    if (v.lat != null && v.lng != null) {
+      // 已記住座標 → 直接用，不再打 Geocoding
+      lat = Number(v.lat);
+      lng = Number(v.lng);
     } else {
-      const res = await fetch(`${API}/geocode?q=${encodeURIComponent(label)}`);
-      if (!res.ok) { alert("地址定位失敗，請確認地點是否正確"); return; }
-      const geo = await res.json();
-      if (!geo?.lat) { alert("找不到此地點"); return; }
-      lat = Number(geo.lat);
-      lng = Number(geo.lng);
+      // 地點文字若已內含座標（例如「...（24.996214, 121.322952）」），直接使用
+      const coordMatch = label.match(/([\d.]+)\s*,\s*([\d.]+)/);
+      if (coordMatch) {
+        lat = Number(coordMatch[1]);
+        lng = Number(coordMatch[2]);
+      } else {
+        const res = await fetch(`${API}/geocode?q=${encodeURIComponent(label)}`);
+        if (!res.ok) { alert("地址定位失敗，請確認地點是否正確"); return; }
+        const geo = await res.json();
+        if (!geo?.lat) { alert("找不到此地點"); return; }
+        lat = Number(geo.lat);
+        lng = Number(geo.lng);
+      }
+
+      // 寫回伺服器並更新快取，下次按📍直接讀，不再消耗 Geocoding 額度
+      v.lat = String(lat);
+      v.lng = String(lng);
+      fetch(`${API}/visits/${mode}/${id}/coords`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat, lng })
+      }).catch(() => {});
     }
 
     const nav = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
@@ -1174,8 +1199,7 @@ async function checkVisitBanner(area) {
     const res  = await fetch(`${API}/visits/${area}`);
     const list = await res.json();
 
-    const now      = new Date();
-    const nowTime  = now.toTimeString().slice(0, 5); // HH:MM
+    const nowTime  = taiwanNowTime(); // HH:MM（台灣時區）
     const today    = todayStr(0);
     const tomorrow = todayStr(1);
     const dismissed = JSON.parse(localStorage.getItem("visitBannerDismissed") || "[]");
@@ -1186,7 +1210,7 @@ async function checkVisitBanner(area) {
       !dismissed.includes(`${v.id}_${v.visit_date}`)
     ).map(v => ({ ...v, _when: "今天" }));
 
-    const tomorrowVisits = now.getHours() >= 16
+    const tomorrowVisits = Number(nowTime.slice(0, 2)) >= 16
       ? list.filter(v => v.visit_date === tomorrow && !dismissed.includes(`${v.id}_${v.visit_date}`))
             .map(v => ({ ...v, _when: "明天" }))
       : [];
