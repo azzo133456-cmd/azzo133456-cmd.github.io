@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "76";
+const APP_VERSION = "77";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -846,10 +846,74 @@ function todayStr(offsetDays = 0) {
 
 function taiwanNowTime() { return taiwanParts().time; }   // HH:MM
 
+// ─────────────────────────────────────────
+// 會勘框縮放：右下角握把可自由拖曳，尺寸記在 localStorage
+// 用 Pointer Events，滑鼠與觸控走同一套
+// ─────────────────────────────────────────
+const VISIT_SIZE_KEY = "visitBoxSize";
+const VISIT_MIN_W = 280, VISIT_MIN_H = 220;
+
+function visitMaxW() { return window.innerWidth  * 0.96; }
+function visitMaxH() { return window.innerHeight * 0.92; }
+
+function applyVisitSize() {
+  const box = document.getElementById("visitBox");
+  if (!box) return;
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(VISIT_SIZE_KEY) || "null"); } catch { saved = null; }
+  if (!saved) return;
+  // 存的尺寸可能來自另一支裝置或轉向前，套用時重新夾在目前視窗範圍內
+  box.style.width     = Math.max(VISIT_MIN_W, Math.min(visitMaxW(), saved.w)) + "px";
+  box.style.height    = Math.max(VISIT_MIN_H, Math.min(visitMaxH(), saved.h)) + "px";
+  box.style.maxWidth  = "96vw";
+  box.style.maxHeight = "92vh";
+}
+
+function initVisitResize() {
+  const handle = document.getElementById("visitResize");
+  const box    = document.getElementById("visitBox");
+  if (!handle || !box || handle._bound) return;
+  handle._bound = true;
+
+  let startX = 0, startY = 0, startW = 0, startH = 0;
+
+  handle.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    startX = e.clientX; startY = e.clientY;
+    startW = box.offsetWidth; startH = box.offsetHeight;
+    box.classList.add("resizing");
+    // 拖曳期間解除 max-* 限制，否則會被 88vh 卡住拉不大
+    box.style.maxWidth  = "96vw";
+    box.style.maxHeight = "92vh";
+  });
+
+  handle.addEventListener("pointermove", (e) => {
+    if (!box.classList.contains("resizing")) return;
+    const w = Math.max(VISIT_MIN_W, Math.min(visitMaxW(), startW + (e.clientX - startX)));
+    const h = Math.max(VISIT_MIN_H, Math.min(visitMaxH(), startH + (e.clientY - startY)));
+    box.style.width  = w + "px";
+    box.style.height = h + "px";
+  });
+
+  const end = () => {
+    if (!box.classList.contains("resizing")) return;
+    box.classList.remove("resizing");
+    try {
+      localStorage.setItem(VISIT_SIZE_KEY,
+        JSON.stringify({ w: box.offsetWidth, h: box.offsetHeight }));
+    } catch {}
+  };
+  handle.addEventListener("pointerup", end);
+  handle.addEventListener("pointercancel", end);
+}
+
 async function openVisitModal() {
   if (!VISIT_MODES.includes(mode)) return;
   document.getElementById("visitModal").style.display = "flex";
   document.getElementById("visitStatus").textContent = "";
+  applyVisitSize();
+  initVisitResize();
   initVisitPasteZone();
   updatePushButtonLabel();
   await renderVisitList();

@@ -131,7 +131,7 @@
 
   <!-- 會勘排程 Modal -->
   <div id="visitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:14px;padding:0 20px 20px;width:440px;max-width:94vw;max-height:88vh;overflow-y:auto;font-family:sans-serif;">
+    <div id="visitBox" style="box-sizing:border-box;background:#fff;border-radius:14px;padding:0 20px 20px;width:440px;max-width:94vw;max-height:88vh;overflow-y:auto;font-family:sans-serif;">
       <div style="position:sticky;top:0;background:#fff;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;margin-bottom:6px;border-bottom:1px solid #f0f0f0;">
         <h3 style="margin:0;color:#2F4F7F">會勘排程</h3>
         <button onclick="document.getElementById('visitModal').style.display='none'" title="關閉"
@@ -170,6 +170,12 @@
       </div>
 
       <p id="visitStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
+
+      <div id="visitResize" title="拖曳調整大小">
+        <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true">
+          <path d="M11 1 L1 11 M11 5 L5 11 M11 9 L9 11" stroke="#b6bfd0" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
     </div>
   </div>
 
@@ -223,7 +229,7 @@
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=76"></script>
+  <script src="map.js?v=77"></script>
 
 </body>
 </html>

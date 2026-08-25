@@ -469,3 +469,20 @@ html, body {
   z-index: 7999;
   background: transparent;
 }
+
+/* 會勘框：右下角縮放握把（滑鼠與觸控都可拖曳） */
+#visitResize {
+  position: sticky;
+  bottom: -12px;
+  margin: 6px -8px -8px auto;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: nwse-resize;
+  touch-action: none;
+  border-radius: 6px;
+}
+#visitResize:active { background: #eef1f7; }
+#visitBox.resizing { user-select: none; }
