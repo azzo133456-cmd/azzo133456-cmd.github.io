@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "77";
+const APP_VERSION = "78";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -1012,7 +1012,7 @@ async function renderVisitList() {
               <span style="font-size:12px;color:${rel.past ? "#999" : g.labelColor}">${escapeHtml(rel.text)}</span>
             </div>
             <div style="font-size:14px;color:#444;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(v.label)}</div>
-            ${v.note ? `<div style="font-size:12px;color:#999;margin-top:2px">${escapeHtml(v.note)}</div>` : ""}
+            ${v.note ? `<div class="visit-note" onclick="event.stopPropagation();this.classList.toggle('open')" title="點一下展開／收合">${escapeHtml(v.note)}</div>` : ""}
           </div>
           <button class="task-pri-btn active" onclick="locateVisit(${v.id})" title="定位">📍</button>
           <button onclick="deleteVisit(${v.id})" title="刪除"
@@ -1223,14 +1223,17 @@ function parseOcrText(text) {
 
 // 移除「主持人/聯絡人/出席者/列席者/副本」等與會勘內容無關的內容
 function stripIrrelevantLines(text) {
-  const KEY = "(?:主持人|聯絡人|出席人|出席者|列席人|列席者|副本)";
+  // 會勘時間/地點已經解析進日期時間與地點欄位，留在備註只是重複；抄本/副本純屬公文流程
+  const KEY = "(?:主持人|聯絡人|出席人|出席者|列席人|列席者|副本|抄本|會勘時間|會勘地點)";
   // 整行以該欄位開頭（含常見編號，如 一、二、(一)、1. 等）→ 整行移除
   const lineRe = new RegExp(`^[\\s　]*[（(]?[一二三四五六七八九十\\d]{0,3}[、.)）]?\\s*${KEY}`);
   let lines = text.split(/\r?\n/).filter(line => !lineRe.test(line.trim()));
   // 同一行中內嵌的欄位（例：「...　主持人：王科長」）→ 移除該段
   const inlineRe = new RegExp(`(?:^|[\\s　、,，])${KEY}[:：][^\\n　]*`, "g");
   lines = lines.map(line => line.replace(inlineRe, "").trim());
-  return lines.filter(l => l.length > 0).join("\n");
+  // 只剩標籤沒有內容的行（例：「備註：」「列席者：」）也一併去掉，別白佔一行
+  const emptyLabelRe = /^[^\s：:]{2,6}[：:]\s*$/;
+  return lines.filter(l => l.length > 0 && !emptyLabelRe.test(l)).join("\n");
 }
 
 // 將解析結果（日期/時間/地點/全文）填入會勘表單
