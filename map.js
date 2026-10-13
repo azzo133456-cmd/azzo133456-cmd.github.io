@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "78";
+const APP_VERSION = "79";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -277,7 +277,7 @@ function buildCardHtml(t, area, colors) {
   }).join("");
   return `
     <div class="task-card${priCls}" onclick="goToTask('${idSafe}')">
-      <span class="task-card-icon">${cardMarkerHtml(t.color, t.priority)}</span>
+      <span class="task-card-icon">${cardMarkerHtml(displayColor(t), t.priority)}</span>
       <div class="task-card-body">
         <div class="task-card-id">${escapeHtml(name)}</div>
         ${addr ? `<div class="task-card-addr">${escapeHtml(addr)}</div>` : ""}
@@ -291,8 +291,20 @@ function buildCardHtml(t, area, colors) {
     </div>`;
 }
 
+// 排外：編號不在主要範圍內的點位，畫面上標成橘色（只改顯示，不寫進資料庫）
+const PAIWAI_RANGE = ["0400172", "0400397"];
+const PAIWAI_OUT_COLOR = "#dd6b20";
+function displayColor(t) {
+  if (mode === "paiwai") {
+    const n = t.is_custom ? (t.label || "") : t.id;
+    const inRange = /^0400\d{3}$/.test(n) && n >= PAIWAI_RANGE[0] && n <= PAIWAI_RANGE[1];
+    if (!inRange) return PAIWAI_OUT_COLOR;
+  }
+  return t.color;
+}
+
 function buildMarker(t) {
-  const icon  = t.color ? getColorIcon(t.color) : t.priority ? getPriorityIcon() : new L.Icon.Default();
+  const icon  = displayColor(t) ? getColorIcon(displayColor(t)) : t.priority ? getPriorityIcon() : new L.Icon.Default();
   // 台北市：marker 名稱統一顯示燈牌號碼（沒有燈牌號碼才退回系統 id）
   const label = t.is_custom ? (t.label || t.address || t.id)
               : mode === "taipei" ? (t.tag_id || t.id)
