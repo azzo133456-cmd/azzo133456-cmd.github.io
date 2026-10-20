@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "79";
+const APP_VERSION = "80";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -747,6 +747,9 @@ async function addFav(id) {
 
 async function removeFav(id) {
   if (!TASK_MODES.includes(mode)) return;
+  const t = taskCache[mode]?.find(x => x.id === id);
+  const name = t ? (t.is_custom ? (t.label || t.address || id) : id) : id;
+  if (!confirm(`確定從清單移除「${name}」？`)) return;
   taskCache[mode] = (taskCache[mode] || []).filter(t => t.id !== id);
 
   if (CTRL_MODES.includes(mode)) {
@@ -762,7 +765,40 @@ async function removeFav(id) {
   }
 
   lsSetTasks(mode, taskCache[mode]);
-  fetch(`${API}/tasks/${mode}/${encodeURIComponent(id)}`, { method: "DELETE" });
+  const area = mode;
+  fetch(`${API}/tasks/${area}/${encodeURIComponent(id)}`, { method: "DELETE" })
+    .then(r => r.json())
+    .then(d => { if (d.batch) showUndoToast(`已移除 ${name}`, area, d.batch); })
+    .catch(() => {});
+}
+
+// 刪除後畫面底部顯示「復原」，10 秒內可整批還原（伺服器回收桶保留 30 天）
+let undoTimer = null;
+function showUndoToast(text, area, batch) {
+  let el = document.getElementById("undoToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "undoToast";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<span>${escapeHtml(text)}</span><button>復原</button>`;
+  el.style.display = "flex";
+  el.querySelector("button").onclick = async () => {
+    el.style.display = "none";
+    clearTimeout(undoTimer);
+    try {
+      const r = await fetch(`${API}/tasks/${area}/restore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch })
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error || "復原失敗"); return; }
+      if (mode === area) await loadAndRenderTasks(area);
+    } catch { alert("復原失敗，請檢查網路"); }
+  };
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { el.style.display = "none"; }, 10000);
 }
 
 
@@ -831,9 +867,17 @@ async function clearAllTasks() {
   if (!TASK_MODES.includes(mode)) return;
   const count = taskCache[mode]?.length || 0;
   if (!count) return;
-  if (!confirm(`確定清空全部 ${count} 筆任務？`)) return;
-  await fetch(`${API}/tasks/${mode}`, { method: "DELETE" });
-  await loadAndRenderTasks(mode);
+  // 只按「確定」太容易誤觸，改成要輸入筆數才會清空
+  const typed = prompt(`即將清空全部 ${count} 筆任務。
+確定要清空的話，請輸入數字 ${count}：`);
+  if (typed === null) return;
+  if (typed.trim() !== String(count)) { alert("輸入的數字不符，已取消清空"); return; }
+
+  const area = mode;
+  const res  = await fetch(`${API}/tasks/${area}`, { method: "DELETE" });
+  const data = await res.json().catch(() => ({}));
+  await loadAndRenderTasks(area);
+  if (data.batch) showUndoToast(`已清空 ${data.count} 筆`, area, data.batch);
 }
 
 // ─────────────────────────────────────────

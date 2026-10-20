@@ -504,3 +504,30 @@ html, body {
   display: block;
   -webkit-line-clamp: unset;
 }
+
+/* 刪除後的「復原」提示 */
+#undoToast {
+  position: fixed;
+  left: 50%; bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 100000;
+  display: none;
+  align-items: center;
+  gap: 16px;
+  background: #2d3748;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  max-width: 92vw;
+}
+#undoToast button {
+  background: none;
+  border: none;
+  color: #fbd38d;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 6px;
+}
