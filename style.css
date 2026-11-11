@@ -542,3 +542,13 @@ html, body {
   box-shadow: none;
 }
 .nearby-label::before { display: none; }
+
+/* 搜尋到的那一盞：深藍底編號，和周遭的灰色編號區分 */
+.nearby-label.nearby-center {
+  background: #2F4F7F;
+  border-color: #2F4F7F;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  z-index: 1000;   /* 永遠蓋在周遭編號上面 */
+}

@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "81";
+const APP_VERSION = "82";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -150,6 +150,7 @@ function enterMode(newMode) {
 function switchMode(newMode) {
   mode = newMode;
   clearNearby();
+  if (currentMarker && currentMarker._keep) { map.removeLayer(currentMarker); currentMarker = null; }
 
   const isRegion = TASK_MODES.includes(mode);
 
@@ -530,7 +531,17 @@ function showLampData(data) {
   currentMarker = L.marker([lat, lng]).addTo(map);
   currentMarker.bindPopup(popupHTML(data));
   map.setView([lat, lng], 18);
-  setTimeout(() => currentMarker.openPopup(), 300);
+
+  if (NEARBY_MODES.includes(mode)) {
+    // 有周遭標示的頁面：不自動開資訊框（會蓋住周遭的燈），改在圖標上方直接標編號；
+    // 點圖標才看資訊，關掉資訊框圖標也保留
+    currentMarker._keep = true;
+    currentMarker.bindTooltip(escapeHtml(data.id), {
+      permanent: true, direction: "right", offset: [10, -26], className: "nearby-label nearby-center"
+    });
+  } else {
+    setTimeout(() => currentMarker.openPopup(), 300);
+  }
   showNearbyLamps(lat, lng, data.id);
 }
 
@@ -1734,7 +1745,7 @@ map.on("contextmenu", (e) => {
 
 // 搜尋 marker 的 popup 關閉時自動移除 marker
 map.on("popupclose", (e) => {
-  if (currentMarker && e.popup === currentMarker.getPopup()) {
+  if (currentMarker && !currentMarker._keep && e.popup === currentMarker.getPopup()) {
     map.removeLayer(currentMarker);
     currentMarker = null;
   }
