@@ -531,3 +531,14 @@ html, body {
   cursor: pointer;
   padding: 4px 6px;
 }
+
+/* 搜尋路燈後周遭的路燈編號標籤 */
+.nearby-label {
+  background: rgba(255,255,255,.9);
+  border: 1px solid #cbd5e0;
+  color: #2d3748;
+  font-size: 11px;
+  padding: 0 4px;
+  box-shadow: none;
+}
+.nearby-label::before { display: none; }

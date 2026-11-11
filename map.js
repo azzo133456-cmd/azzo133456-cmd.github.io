@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "80";
+const APP_VERSION = "81";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -149,6 +149,7 @@ function enterMode(newMode) {
 // ─────────────────────────────────────────
 function switchMode(newMode) {
   mode = newMode;
+  clearNearby();
 
   const isRegion = TASK_MODES.includes(mode);
 
@@ -530,6 +531,54 @@ function showLampData(data) {
   currentMarker.bindPopup(popupHTML(data));
   map.setView([lat, lng], 18);
   setTimeout(() => currentMarker.openPopup(), 300);
+  showNearbyLamps(lat, lng, data.id);
+}
+
+// ─────────────────────────────────────────
+// 搜尋路燈後，順便標出周遭（約 150 公尺內）的路燈編號
+// 用後端 /lamps-full/bbox；點周遭的燈可直接查那一盞
+// ─────────────────────────────────────────
+const NEARBY_MODES  = ["xinbei"];
+const NEARBY_RADIUS = 0.0015;   // 度，約 150 公尺
+let nearbyLayer = null;
+
+function clearNearby() {
+  if (nearbyLayer) { map.removeLayer(nearbyLayer); nearbyLayer = null; }
+}
+
+async function showNearbyLamps(lat, lng, centerId) {
+  clearNearby();
+  if (!NEARBY_MODES.includes(mode) || !isFinite(lat) || !isFinite(lng)) return;
+  const area = mode;
+  const r = NEARBY_RADIUS;
+  try {
+    const url = `${API}/lamps-full/bbox?s=${lat - r}&w=${lng - r}&n=${lat + r}&e=${lng + r}`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const { results } = await res.json();
+    if (mode !== area) return;   // 等待期間已切換頁面
+
+    const layer = L.layerGroup();
+    for (const l of results || []) {
+      if (l.id === centerId) continue;
+      const la = Number(l.lat), ln = Number(l.lng);
+      if (!isFinite(la) || !isFinite(ln)) continue;
+      const abolished = l.abolished === "是";
+      const m = L.circleMarker([la, ln], {
+        radius: 5, weight: 2, color: "#fff",
+        fillColor: abolished ? "#a0aec0" : "#4a5568", fillOpacity: 0.9
+      });
+      m.bindTooltip(escapeHtml(l.id) + (abolished ? "（廢止）" : ""), {
+        permanent: true, direction: "top", offset: [0, -4], className: "nearby-label"
+      });
+      m.on("click", () => {
+        document.getElementById("lampInput").value = l.id;
+        searchLamp();
+      });
+      layer.addLayer(m);
+    }
+    nearbyLayer = layer.addTo(map);
+  } catch {}
 }
 
 // 台北市：燈牌號碼／點位系統編號可能對到多筆資料（舊點位刪除後號碼沿用、不同公園各自編號撞號），
