@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "83";
+const APP_VERSION = "84";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -19,7 +19,7 @@ const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", paiwai:
 // 有任務清單的模式（共用）
 const TASK_MODES = ["luzhu", "yangmei", "paiwai", "ymctrl", "tyctrl", "xinbei", "taipei"];
 // 智控器模式（只要藍+綠，不顯示 W/K）
-const CTRL_MODES  = ["ymctrl", "tyctrl"];
+const CTRL_MODES  = ["ymctrl"];   // 桃園智控器筆數少，改用蘆竹/楊梅的一般顯示
 // 有會勘排程功能的模式
 const VISIT_MODES = ["luzhu", "yangmei", "paiwai", "xinbei", "taipei"];
 // 台北市：獨立資料庫，查詢/加入清單需帶 area=taipei 給後端
