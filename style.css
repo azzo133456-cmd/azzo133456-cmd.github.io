@@ -552,3 +552,21 @@ html, body {
   font-size: 12px;
   z-index: 1000;   /* 永遠蓋在周遭編號上面 */
 }
+
+/* 彈出視窗（原生 dialog）：外觀沿用內層白框，backdrop 取代原本的半透明遮罩 */
+dialog.modal {
+  padding: 0;
+  border: none;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+dialog.modal:focus { outline: none; }
+dialog.modal:modal { overscroll-behavior: contain; }
+dialog.modal::backdrop {
+  background: rgba(0, 0, 0, .5);
+  overflow: hidden;              /* 讓 backdrop 成為捲動容器，overscroll-behavior 才生效 */
+  overscroll-behavior: contain;
+}
+#visitBox { overscroll-behavior: contain; }

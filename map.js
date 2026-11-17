@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "84";
+const APP_VERSION = "85";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -1024,9 +1024,34 @@ function initVisitResize() {
   handle.addEventListener("pointercancel", end);
 }
 
+// 彈出視窗：原生 <dialog>（返回鍵／返回手勢／Esc 會關閉，背後地圖不會被誤觸）
+function openModal(id) {
+  const d = document.getElementById(id);
+  if (d.open) return;
+  d.showModal();
+  d.focus({ preventScroll: true });   // 焦點停在視窗本身，手機不會一打開就跳出鍵盤
+}
+function closeModal(id) {
+  const d = document.getElementById(id);
+  if (d.open) d.close();
+}
+
+// Excel 元件（約 900KB）只在匯入時才下載，不拖慢每次開頁
+let xlsxLoading = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return xlsxLoading ||= new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload  = () => resolve(window.XLSX);
+    s.onerror = () => { xlsxLoading = null; s.remove(); reject(new Error("Excel 元件載入失敗，請檢查網路")); };
+    document.head.appendChild(s);
+  });
+}
+
 async function openVisitModal() {
   if (!VISIT_MODES.includes(mode)) return;
-  document.getElementById("visitModal").style.display = "flex";
+  openModal("visitModal");
   document.getElementById("visitStatus").textContent = "";
   applyVisitSize();
   initVisitResize();
@@ -1179,7 +1204,7 @@ async function locateVisit(id) {
     }
 
     const nav = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-    document.getElementById("visitModal").style.display = "none";
+    closeModal("visitModal");
     if (currentMarker) map.removeLayer(currentMarker);
     currentMarker = L.marker([lat, lng]).addTo(map)
       .bindPopup(`
@@ -1594,7 +1619,7 @@ async function doBatchAdd() {
   if (!result.notFound?.length && !result.ambiguous?.length) {
     document.getElementById("batchIds").value = "";
     document.getElementById("batchStatus").textContent = "";
-    setTimeout(() => document.getElementById("batchModal").style.display = "none", 800);
+    setTimeout(() => closeModal("batchModal"), 800);
   }
 }
 
@@ -1695,7 +1720,7 @@ function openCustomModal(lat, lng) {
   document.getElementById("customStatus").textContent = "";
   // 有座標時預設停在經緯度頁
   switchCoordTab(lat != null ? "wgs" : "wgs");
-  document.getElementById("customModal").style.display = "flex";
+  openModal("customModal");
 }
 
 // ─────────────────────────────────────────
@@ -1786,7 +1811,7 @@ async function doAddCustom() {
     status.textContent = "✅ 已新增";
     await loadAndRenderTasks(mode);
     setTimeout(() => {
-      document.getElementById("customModal").style.display = "none";
+      closeModal("customModal");
       document.getElementById("customLabel").value = "";
       document.getElementById("customLat").value   = "";
       document.getElementById("customLng").value   = "";
@@ -1811,7 +1836,7 @@ function openEdit(id, address, lat, lng, watt, col) {
   document.getElementById("editWatt").value    = watt ?? "";
   document.getElementById("editCol").value     = col  ?? "";
   document.getElementById("editStatus").textContent = "";
-  document.getElementById("editModal").style.display = "flex";
+  openModal("editModal");
 }
 
 async function saveEdit() {
@@ -1832,7 +1857,7 @@ async function saveEdit() {
     const result = await res.json();
     if (result.ok) {
       status.textContent = "✅ 儲存成功";
-      setTimeout(() => document.getElementById("editModal").style.display = "none", 800);
+      setTimeout(() => closeModal("editModal"), 800);
     } else {
       status.textContent = `❌ ${result.error}`;
     }
@@ -1845,8 +1870,8 @@ async function saveEdit() {
 // 管理員 / 匯入
 // ─────────────────────────────────────────
 function openImport() {
-  const modal = document.getElementById("importModal");
-  modal.style.display = "flex";
+  openModal("importModal");
+  loadXLSX().catch(() => {});   // 先在背景下載 Excel 元件，按「匯入」時通常已就緒
 }
 
 async function doImport() {
@@ -1861,6 +1886,7 @@ async function doImport() {
   btn.disabled = true;
 
   try {
+    await loadXLSX();
     const buf  = await fileInput.files[0].arrayBuffer();
     const wb   = XLSX.read(buf, { type: "array", raw: true });
     const ws   = wb.Sheets[wb.SheetNames[0]];

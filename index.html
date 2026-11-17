@@ -66,7 +66,7 @@
       <span class="panel-title">任務清單</span>
       <div class="panel-actions">
         <button class="panel-action-btn" onclick="openCustomModal()">自訂＋</button>
-        <button class="panel-action-btn" onclick="document.getElementById('batchModal').style.display='flex'">批次＋</button>
+        <button class="panel-action-btn" onclick="openModal('batchModal')">批次＋</button>
         <button id="visitPanelBtn" class="panel-action-btn" onclick="openVisitModal()" style="display:none;">會勘</button>
         <button class="panel-action-btn" onclick="clearAllTasks()" style="background:#fee;color:#c00;">清空</button>
         <button class="panel-action-btn" onclick="closeTaskPanel()" style="font-size:16px;padding:6px 10px;">↓</button>
@@ -76,9 +76,9 @@
   </div>
 
   <!-- 編輯 Modal -->
-  <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <dialog id="editModal" class="modal" aria-labelledby="editModalTitle" tabindex="-1">
     <div style="background:#fff;border-radius:14px;padding:24px;width:300px;max-width:92vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 4px;color:#2F4F7F">編輯路燈</h3>
+      <h3 id="editModalTitle" style="margin:0 0 4px;color:#2F4F7F">編輯路燈</h3>
       <p id="editId" style="margin:0 0 14px;font-size:13px;color:#888"></p>
       <label style="font-size:13px;color:#555">地址</label>
       <input id="editAddress" type="text" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 10px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
@@ -94,47 +94,47 @@
       <input id="editCol" type="number" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 16px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
       <div style="display:flex;gap:8px">
         <button onclick="saveEdit()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">儲存</button>
-        <button onclick="document.getElementById('editModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
+        <button onclick="closeModal('editModal')" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="editStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
-  </div>
+  </dialog>
 
   <!-- 匯入 Modal -->
-  <div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <dialog id="importModal" class="modal" aria-labelledby="importModalTitle" tabindex="-1">
     <div style="background:#fff;border-radius:14px;padding:24px;width:320px;max-width:92vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 12px;color:#2F4F7F">匯入路燈資料</h3>
+      <h3 id="importModalTitle" style="margin:0 0 12px;color:#2F4F7F">匯入路燈資料</h3>
       <p style="font-size:13px;color:#555;margin:0 0 12px">支援格式：路燈/開關箱 Excel（中文欄名）<br>TWD97 X/Y 座標自動轉換經緯度</p>
       <input id="importFile" type="file" accept=".xlsx,.csv" style="width:100%;margin-bottom:12px">
       <input id="importAreas" type="text" placeholder="篩選行政區（選填）例：汐止區,五股區" style="width:100%;padding:8px;box-sizing:border-box;margin-bottom:12px;border:1.5px solid #dde3ee;border-radius:8px;font-size:13px">
       <div style="display:flex;gap:8px">
         <button id="importBtn" onclick="doImport()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">匯入</button>
-        <button onclick="document.getElementById('importModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
+        <button onclick="closeModal('importModal')" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="importStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
-  </div>
+  </dialog>
 
   <!-- 批次加入清單 Modal -->
-  <div id="batchModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <dialog id="batchModal" class="modal" aria-labelledby="batchModalTitle" tabindex="-1">
     <div style="background:#fff;border-radius:14px;padding:24px;width:320px;max-width:92vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 8px;color:#2F4F7F">批次加入清單</h3>
+      <h3 id="batchModalTitle" style="margin:0 0 8px;color:#2F4F7F">批次加入清單</h3>
       <p style="font-size:13px;color:#555;margin:0 0 10px">每行一個路燈編號</p>
       <textarea id="batchIds" rows="7" style="width:100%;padding:8px;box-sizing:border-box;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px;resize:vertical"></textarea>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button onclick="doBatchAdd()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">加入</button>
-        <button onclick="document.getElementById('batchModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
+        <button onclick="closeModal('batchModal')" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="batchStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
-  </div>
+  </dialog>
 
   <!-- 會勘排程 Modal -->
-  <div id="visitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <dialog id="visitModal" class="modal" aria-labelledby="visitModalTitle" tabindex="-1">
     <div id="visitBox" style="box-sizing:border-box;background:#fff;border-radius:14px;padding:0 20px 20px;width:440px;max-width:94vw;max-height:88vh;overflow-y:auto;font-family:sans-serif;">
       <div style="position:sticky;top:0;background:#fff;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 0 10px;margin-bottom:6px;border-bottom:1px solid #f0f0f0;">
-        <h3 style="margin:0;color:#2F4F7F">會勘排程</h3>
-        <button onclick="document.getElementById('visitModal').style.display='none'" title="關閉"
+        <h3 id="visitModalTitle" style="margin:0;color:#2F4F7F">會勘排程</h3>
+        <button onclick="closeModal('visitModal')" title="關閉"
           style="border:none;background:#f0f2f7;color:#666;width:32px;height:32px;border-radius:16px;font-size:18px;line-height:1;cursor:pointer;flex-shrink:0;">×</button>
       </div>
 
@@ -177,12 +177,12 @@
         </svg>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <!-- 自訂地點 Modal -->
-  <div id="customModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+  <dialog id="customModal" class="modal" aria-labelledby="customModalTitle" tabindex="-1">
     <div style="background:#fff;border-radius:14px;padding:24px;width:300px;max-width:92vw;font-family:sans-serif;">
-      <h3 style="margin:0 0 14px;color:#2F4F7F">新增自訂地點</h3>
+      <h3 id="customModalTitle" style="margin:0 0 14px;color:#2F4F7F">新增自訂地點</h3>
       <label style="font-size:13px;color:#555">名稱（必填）</label>
       <input id="customLabel" type="text" placeholder="例：變電箱A、工作點1" style="width:100%;padding:8px;box-sizing:border-box;margin:4px 0 12px;border:1.5px solid #dde3ee;border-radius:8px;font-size:14px">
 
@@ -214,11 +214,11 @@
 
       <div style="display:flex;gap:8px">
         <button onclick="doAddCustom()" style="flex:1;padding:10px;background:#2F4F7F;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer">新增</button>
-        <button onclick="document.getElementById('customModal').style.display='none'" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
+        <button onclick="closeModal('customModal')" style="flex:1;padding:10px;background:#f0f0f0;border:none;border-radius:8px;font-size:15px;cursor:pointer">取消</button>
       </div>
       <p id="customStatus" style="margin:10px 0 0;font-size:13px;color:#333"></p>
     </div>
-  </div>
+  </dialog>
 
   <!-- 管理員按鈕 -->
   <div id="adminBtn" onclick="openImport()" style="position:fixed;bottom:16px;right:14px;width:36px;height:36px;background:rgba(47,79,127,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;z-index:1000">⚙️</div>
@@ -228,8 +228,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="map.js?v=84"></script>
+  <script src="map.js?v=85"></script>
 
 </body>
 </html>
