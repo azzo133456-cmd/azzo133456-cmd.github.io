@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "85";
+const APP_VERSION = "86";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -176,7 +176,7 @@ function switchMode(newMode) {
   if (mode === "yangmei") { map.setView([24.916, 121.135], 13); }
   if (mode === "paiwai")  { map.setView([24.916, 121.135], 13); }
   if (mode === "ymctrl")  { map.setView([24.916, 121.135], 13); }
-  if (mode === "tyctrl")  { map.setView([24.993, 121.301], 13); }
+  if (mode === "tyctrl")  { map.fitBounds([[24.91, 121.09], [25.115, 121.27]]); }   // 點位分散在大園、觀音、新屋一帶，依螢幕大小框住全部
   if (mode === "xinbei")  { map.setView([25.04, 121.50], 11); }   // 林口～汐止/深坑/石碇分散多區，縮小比例先看全貌
   if (mode === "taipei")  { map.setView([25.03, 121.53], 12); }
 
