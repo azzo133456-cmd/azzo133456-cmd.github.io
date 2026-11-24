@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "87";
+const APP_VERSION = "88";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -1593,13 +1593,36 @@ async function togglePushSubscription() {
 // ─────────────────────────────────────────
 // 批次加入清單
 // ─────────────────────────────────────────
+const BATCH_RANGE_MAX = 500;
+
+// 0602515~0602520、0602515~20（後段只寫尾數）展開成連續編號，保留前導 0
+function expandBatchIds(raw) {
+  const text = String(raw).replace(/\s*[~～〜]\s*/g, "~");
+  const out = [];
+  for (const tok of text.split(/[\n,，、\s]+/).map(s => s.trim()).filter(Boolean)) {
+    if (!tok.includes("~")) { out.push(tok); continue; }
+    const m = tok.match(/^(.*?)(\d+)~(\D*)(\d+)$/);
+    if (!m || (m[3] && m[3] !== m[1])) throw new Error(`看不懂的連續編號：${tok}（例：0602515~0602520）`);
+    const [, prefix, a, , bRaw] = m;
+    const b = bRaw.length < a.length ? a.slice(0, a.length - bRaw.length) + bRaw : bRaw;
+    if (b.length !== a.length) throw new Error(`連續編號前後位數不同：${tok}`);
+    const start = Number(a), end = Number(b);
+    if (end < start) throw new Error(`連續編號後面比前面小：${tok}`);
+    if (end - start + 1 > BATCH_RANGE_MAX) throw new Error(`連續編號一次最多 ${BATCH_RANGE_MAX} 筆：${tok}`);
+    for (let n = start; n <= end; n++) out.push(prefix + String(n).padStart(a.length, "0"));
+  }
+  return [...new Set(out)];
+}
+
 async function doBatchAdd() {
   if (!TASK_MODES.includes(mode)) return;
   const status = document.getElementById("batchStatus");
   const raw    = document.getElementById("batchIds").value.trim();
   if (!raw) { status.textContent = "請輸入路燈編號"; return; }
 
-  const ids = raw.split(/[\n,，、\s]+/).map(s => s.trim()).filter(Boolean);
+  let ids;
+  try { ids = expandBatchIds(raw); }
+  catch (e) { status.textContent = `❌ ${e.message}`; return; }
   status.textContent = `送出 ${ids.length} 筆…`;
 
   const res    = await fetch(`${API}/tasks/${mode}`, {
