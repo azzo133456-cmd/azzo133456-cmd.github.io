@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "86";
+const APP_VERSION = "87";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -13,15 +13,15 @@ function escapeHtml(s) {
 }
 
 // Hash ↔ mode 對照表
-const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "PW": "paiwai", "YC": "ymctrl", "TC": "tyctrl", "XB": "xinbei", "TP": "taipei" };
-const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", paiwai: "PW", ymctrl: "YC", tyctrl: "TC", xinbei: "XB", taipei: "TP" };
+const ROUTES = { "": "fullhome", "home": "home", "LZ": "luzhu", "YM": "yangmei", "PW": "paiwai", "LZPW": "lzpaiwai", "YMPW": "ympaiwai", "YC": "ymctrl", "TC": "tyctrl", "XB": "xinbei", "TP": "taipei" };
+const HASHES = { fullhome: "", home: "home", luzhu: "LZ", yangmei: "YM", paiwai: "PW", lzpaiwai: "LZPW", ympaiwai: "YMPW", ymctrl: "YC", tyctrl: "TC", xinbei: "XB", taipei: "TP" };
 
 // 有任務清單的模式（共用）
-const TASK_MODES = ["luzhu", "yangmei", "paiwai", "ymctrl", "tyctrl", "xinbei", "taipei"];
+const TASK_MODES = ["luzhu", "yangmei", "paiwai", "lzpaiwai", "ympaiwai", "ymctrl", "tyctrl", "xinbei", "taipei"];
 // 智控器模式（只要藍+綠，不顯示 W/K）
 const CTRL_MODES  = ["ymctrl"];   // 桃園智控器筆數少，改用蘆竹/楊梅的一般顯示
 // 有會勘排程功能的模式
-const VISIT_MODES = ["luzhu", "yangmei", "paiwai", "xinbei", "taipei"];
+const VISIT_MODES = ["luzhu", "yangmei", "paiwai", "lzpaiwai", "ympaiwai", "xinbei", "taipei"];
 // 台北市：獨立資料庫，查詢/加入清單需帶 area=taipei 給後端
 const TAIPEI_MODE = "taipei";
 let visitListCache = []; // 會勘清單快取，供 locateVisit 依 id 查詢
@@ -35,7 +35,7 @@ let ctrlClusterCache = {};  // 智控器：已建好的 cluster group 快取（a
 // ─────────────────────────────────────────
 // 任務清單（伺服器同步）
 // ─────────────────────────────────────────
-let taskCache = { luzhu: [], yangmei: [], paiwai: [], ymctrl: [], tyctrl: [], xinbei: [], taipei: [] }; // 本地快取
+let taskCache = { luzhu: [], yangmei: [], paiwai: [], lzpaiwai: [], ympaiwai: [], ymctrl: [], tyctrl: [], xinbei: [], taipei: [] }; // 本地快取
 
 // ─────────────────────────────────────────
 // 地圖初始化
@@ -175,6 +175,8 @@ function switchMode(newMode) {
   if (mode === "luzhu")   { map.setView([25.012, 121.288], 13); }
   if (mode === "yangmei") { map.setView([24.916, 121.135], 13); }
   if (mode === "paiwai")  { map.setView([24.916, 121.135], 13); }
+  if (mode === "lzpaiwai") { map.setView([25.012, 121.288], 13); }
+  if (mode === "ympaiwai") { map.setView([24.916, 121.135], 13); }
   if (mode === "ymctrl")  { map.setView([24.916, 121.135], 13); }
   if (mode === "tyctrl")  { map.fitBounds([[24.91, 121.09], [25.115, 121.27]]); }   // 點位分散在大園、觀音、新屋一帶，依螢幕大小框住全部
   if (mode === "xinbei")  { map.setView([25.04, 121.50], 11); }   // 林口～汐止/深坑/石碇分散多區，縮小比例先看全貌

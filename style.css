@@ -9,47 +9,73 @@ html, body {
 /* 全螢幕首頁 */
 #fullHome {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%;
-  height: calc(100% - 90px);
+  inset: 0;
   background: white;
   z-index: 999999;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
   align-items: center;
-  padding: 30px;
+  padding: 28px 16px calc(28px + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .home-title {
   font-size: 26px;
   font-weight: bold;
-  margin-bottom: 36px;
+  margin-bottom: 20px;
   color: #2F4F7F;
   letter-spacing: 2px;
+  flex-shrink: 0;
 }
 
 .home-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 85%;
-  max-width: 320px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  flex-shrink: 0;
+}
+
+.home-group {
+  grid-column: 1 / -1;
+  margin: 10px 2px -2px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #7a8aa6;
+  letter-spacing: 1px;
 }
 
 .home-btn {
   background: #fff;
-  padding: 18px 0;
+  min-height: 56px;
+  padding: 8px 6px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   border-radius: 14px;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: bold;
   border: 2px solid #e0e6f0;
   box-shadow: 0 2px 8px rgba(47,79,127,0.1);
   color: #2F4F7F;
   cursor: pointer;
   transition: 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.home-btn-wide {
+  grid-column: 1 / -1;
+}
+
+.home-btn:hover {
+  border-color: #b9c6dd;
 }
 
 .home-btn:active {
@@ -75,6 +101,7 @@ html, body {
 
 #lampInput {
   flex: 1;
+  min-width: 0;
   padding: 8px 12px;
   border: 1.5px solid #dde3ee;
   border-radius: 20px;
@@ -225,6 +252,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 16px 8px;
   flex-shrink: 0;
   border-bottom: 1px solid #f0f0f0;
@@ -234,10 +262,14 @@ html, body {
   font-size: 16px;
   font-weight: 700;
   color: #2F4F7F;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .panel-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -250,9 +282,18 @@ html, body {
   cursor: pointer;
   background: #EFF3FB;
   color: #2F4F7F;
+  white-space: nowrap;
+  min-height: 34px;
 }
 
 .panel-action-btn:active { opacity: 0.7; }
+
+@media (max-width: 420px) {
+  .panel-header { padding: 10px 10px 8px; }
+  .panel-title { font-size: 15px; }
+  .panel-actions { gap: 6px; }
+  .panel-action-btn { padding: 6px 10px; }
+}
 
 /* 任務卡片清單 */
 #taskCards {
