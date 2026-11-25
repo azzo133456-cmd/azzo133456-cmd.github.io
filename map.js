@@ -4,7 +4,7 @@
 const API = "https://api.azzo133456.page";
 
 // 目前版本（每次發布新版時連同 index.html 的 ?v= 與 version.json 一起更新）
-const APP_VERSION = "88";
+const APP_VERSION = "89";
 
 // HTML 跳脫：避免地址/編號/名稱含特殊字元時破版或被注入
 function escapeHtml(s) {
@@ -1220,6 +1220,30 @@ async function locateVisit(id) {
   }
 }
 
+const VISIT_ALLOWED_DISTRICTS = {
+  luzhu:    ["蘆竹區", "桃園區"],
+  lzpaiwai: ["蘆竹區", "桃園區"],
+  yangmei:  ["楊梅區", "觀音區"],
+  ympaiwai: ["楊梅區", "觀音區"],
+};
+const MODE_NAMES = { luzhu: "蘆竹", lzpaiwai: "蘆竹排外", yangmei: "楊梅", ympaiwai: "楊梅排外" };
+const TAOYUAN_DISTRICTS = ["桃園區", "中壢區", "平鎮區", "八德區", "楊梅區", "蘆竹區", "大溪區", "龜山區",
+  "大園區", "觀音區", "新屋區", "龍潭區", "復興區"];
+
+// 地點有寫區就只看地點，沒寫才看備註（備註常混著發文單位等其他區名）
+function visitDistricts(label, note) {
+  const find = s => TAOYUAN_DISTRICTS.filter(d => String(s || "").includes(d));
+  const fromLabel = find(label);
+  return fromLabel.length ? fromLabel : find(note);
+}
+
+// 回傳不屬於這個模式的區；空陣列＝沒問題或判斷不出來
+function visitWrongDistricts(area, label, note) {
+  const allowed = VISIT_ALLOWED_DISTRICTS[area];
+  if (!allowed) return [];
+  return visitDistricts(label, note).filter(d => !allowed.includes(d));
+}
+
 async function addVisit() {
   const label      = document.getElementById("visitLabel").value.trim();
   const visit_date = document.getElementById("visitDate").value;
@@ -1231,6 +1255,17 @@ async function addVisit() {
     statusEl.textContent = "❌ 請輸入地點與日期";
     statusEl.style.color = "#c00";
     return;
+  }
+
+  const wrong = visitWrongDistricts(mode, label, note);
+  if (wrong.length) {
+    const ok = confirm(`這筆會勘看起來在「${wrong.join("、")}」，\n` +
+      `「${MODE_NAMES[mode]}」只放 ${VISIT_ALLOWED_DISTRICTS[mode].join("、")}。\n\n確定要放在「${MODE_NAMES[mode]}」嗎？`);
+    if (!ok) {
+      statusEl.textContent = "已取消，未新增";
+      statusEl.style.color = "#c00";
+      return;
+    }
   }
 
   try {
